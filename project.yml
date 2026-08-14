@@ -1,0 +1,63 @@
+name: ClipQuota
+
+options:
+  minimumXcodeGenVersion: 2.38.0
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "14.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipquota
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  ClipQuota:
+    type: application
+    platform: macOS
+    productName: ClipQuota
+    sources:
+      - path: Sources/ClipQuota
+        excludes:
+          - Resources/Icons/**
+      - path: Sources/ClipQuota/Resources/Icons
+        type: folder
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: ClipQuota
+        PRODUCT_MODULE_NAME: ClipQuota
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: Sources/ClipQuota/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/ClipQuota/ClipQuota.entitlements
+        ENABLE_APP_SANDBOX: true
+        ENABLE_HARDENED_RUNTIME: true
+        COMBINE_HIDPI_IMAGES: true
+    entitlements:
+      path: Sources/ClipQuota/ClipQuota.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+    scheme:
+      gatherCoverageData: true
+      testTargets:
+        - ClipQuotaTests
+
+  ClipQuotaTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/ClipQuotaTests
+    dependencies:
+      - target: ClipQuota
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipquota.tests
+        GENERATE_INFOPLIST_FILE: true
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ClipQuota.app/Contents/MacOS/ClipQuota"
+        BUNDLE_LOADER: "$(TEST_HOST)"
