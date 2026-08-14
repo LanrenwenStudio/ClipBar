@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct ClipQuotaApp: App {
+struct ClipBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {
@@ -20,5 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         statusItems = StatusItemController(model: model)
+        if CommandLine.arguments.contains("--open-settings") {
+            model.openSettings()
+        }
     }
 }

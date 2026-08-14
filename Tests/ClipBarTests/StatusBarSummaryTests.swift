@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import ClipQuota
+@testable import ClipBar
 
 struct StatusBarSummaryTests {
     @Test("Same-provider enabled accounts pool remaining over total capacity")

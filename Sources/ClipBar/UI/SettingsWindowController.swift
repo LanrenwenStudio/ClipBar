@@ -11,13 +11,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let hostingController = NSHostingController(
             rootView: SettingsView().environment(model)
         )
+        hostingController.sizingOptions = [.preferredContentSize]
+
         let window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 660),
-            styleMask: [.titled, .closable, .resizable],
+            contentRect: NSRect(x: 0, y: 0, width: ClipBarTheme.settingsWidth, height: 420),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
-        window.title = L10n.t("ClipQuota 设置", "ClipQuota Settings")
+        window.title = L10n.t("ClipBar 设置", "ClipBar Settings")
         window.isFloatingPanel = false
         window.becomesKeyOnlyIfNeeded = false
         window.hidesOnDeactivate = false

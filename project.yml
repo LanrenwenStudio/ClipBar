@@ -1,4 +1,4 @@
-name: ClipQuota
+name: ClipBar
 
 options:
   minimumXcodeGenVersion: 2.38.0
@@ -10,54 +10,54 @@ settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipquota
+    PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
-  ClipQuota:
+  ClipBar:
     type: application
     platform: macOS
-    productName: ClipQuota
+    productName: ClipBar
     sources:
-      - path: Sources/ClipQuota
+      - path: Sources/ClipBar
         excludes:
           - Resources/Icons/**
-      - path: Sources/ClipQuota/Resources/Icons
+      - path: Sources/ClipBar/Resources/Icons
         type: folder
         buildPhase: resources
     settings:
       base:
-        PRODUCT_NAME: ClipQuota
-        PRODUCT_MODULE_NAME: ClipQuota
+        PRODUCT_NAME: ClipBar
+        PRODUCT_MODULE_NAME: ClipBar
         GENERATE_INFOPLIST_FILE: false
-        INFOPLIST_FILE: Sources/ClipQuota/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Sources/ClipQuota/ClipQuota.entitlements
+        INFOPLIST_FILE: Sources/ClipBar/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/ClipBar/ClipBar.entitlements
         ENABLE_APP_SANDBOX: true
         ENABLE_HARDENED_RUNTIME: true
         COMBINE_HIDPI_IMAGES: true
     entitlements:
-      path: Sources/ClipQuota/ClipQuota.entitlements
+      path: Sources/ClipBar/ClipBar.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
     scheme:
       gatherCoverageData: true
       testTargets:
-        - ClipQuotaTests
+        - ClipBarTests
 
-  ClipQuotaTests:
+  ClipBarTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: Tests/ClipQuotaTests
+      - path: Tests/ClipBarTests
     dependencies:
-      - target: ClipQuota
+      - target: ClipBar
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipquota.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.tests
         GENERATE_INFOPLIST_FILE: true
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ClipQuota.app/Contents/MacOS/ClipQuota"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ClipBar.app/Contents/MacOS/ClipBar"
         BUNDLE_LOADER: "$(TEST_HOST)"

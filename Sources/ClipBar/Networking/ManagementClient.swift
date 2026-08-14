@@ -119,7 +119,7 @@ struct ManagementClient: Sendable {
         request.timeoutInterval = 30
         request.setValue("Bearer \(settings.normalizedManagementKey)", forHTTPHeaderField: "Authorization")
         request.setValue(settings.normalizedManagementKey, forHTTPHeaderField: "X-Management-Key")
-        request.setValue("ClipQuota/0.1", forHTTPHeaderField: "User-Agent")
+        request.setValue("ClipBar/0.1", forHTTPHeaderField: "User-Agent")
         return request
     }
 

@@ -2,12 +2,12 @@ import Foundation
 
 struct SettingsStore {
     private enum Key {
-        static let baseURL = "clipquota.baseURL"
-        static let managementKey = "clipquota.managementKey"
-        static let refreshSeconds = "clipquota.refreshSeconds"
-        static let statusItemOrder = "clipquota.statusItemOrder"
-        static let hiddenStatusItemIDs = "clipquota.hiddenStatusItemIDs"
-        static let hideEmptyStatusItems = "clipquota.hideEmptyStatusItems"
+        static let baseURL = "clipbar.baseURL"
+        static let managementKey = "clipbar.managementKey"
+        static let refreshSeconds = "clipbar.refreshSeconds"
+        static let statusItemOrder = "clipbar.statusItemOrder"
+        static let hiddenStatusItemIDs = "clipbar.hiddenStatusItemIDs"
+        static let hideEmptyStatusItems = "clipbar.hideEmptyStatusItems"
     }
 
     private let defaults: UserDefaults
@@ -17,6 +17,7 @@ struct SettingsStore {
     }
 
     func load() -> AppSettings {
+        migrateLegacyKeysIfNeeded()
         var settings = AppSettings.default
         if let baseURL = defaults.string(forKey: Key.baseURL), !baseURL.isEmpty {
             settings.baseURL = baseURL
@@ -43,5 +44,22 @@ struct SettingsStore {
         defaults.set(settings.statusItemOrder, forKey: Key.statusItemOrder)
         defaults.set(settings.hiddenStatusItemIDs, forKey: Key.hiddenStatusItemIDs)
         defaults.set(settings.hideEmptyStatusItems, forKey: Key.hideEmptyStatusItems)
+    }
+
+    private func migrateLegacyKeysIfNeeded() {
+        guard defaults.object(forKey: Key.managementKey) == nil else { return }
+        let pairs = [
+            ("clipquota.baseURL", Key.baseURL),
+            ("clipquota.managementKey", Key.managementKey),
+            ("clipquota.refreshSeconds", Key.refreshSeconds),
+            ("clipquota.statusItemOrder", Key.statusItemOrder),
+            ("clipquota.hiddenStatusItemIDs", Key.hiddenStatusItemIDs),
+            ("clipquota.hideEmptyStatusItems", Key.hideEmptyStatusItems)
+        ]
+        for (old, new) in pairs {
+            if defaults.object(forKey: new) == nil, let value = defaults.object(forKey: old) {
+                defaults.set(value, forKey: new)
+            }
+        }
     }
 }

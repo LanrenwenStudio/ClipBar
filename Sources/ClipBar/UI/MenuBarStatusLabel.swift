@@ -4,12 +4,19 @@ struct MenuBarStatusLabel: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: ClipBarTheme.spacingXS) {
             if model.statusSegments.isEmpty {
                 Text(model.statusTitle)
                     .monospacedDigit()
             } else {
-                ForEach(model.statusSegments) { segment in
+                ForEach(Array(model.statusSegments.enumerated()), id: \.element.id) { index, segment in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.32))
+                            .frame(width: 1, height: 11)
+                            .accessibilityHidden(true)
+                    }
+
                     HStack(spacing: 3) {
                         if let image = ProviderIcon.image(for: segment.provider, size: 13) {
                             Image(nsImage: image)

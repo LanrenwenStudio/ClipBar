@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import ClipQuota
+@testable import ClipBar
 
 struct QuotaParserTests {
     @Test("Codex WHAM payload maps 5h and 7d remaining percent")

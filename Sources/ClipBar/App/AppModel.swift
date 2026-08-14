@@ -44,7 +44,7 @@ final class AppModel {
     var statusAccessibilityLabel: String {
         switch connection {
         case .unconfigured:
-            L10n.t("ClipQuota 未配置", "ClipQuota is not configured")
+            L10n.t("ClipBar 未配置", "ClipBar is not configured")
         case .refreshing:
             L10n.t("正在刷新额度", "Refreshing quotas")
         case .failed(let message):

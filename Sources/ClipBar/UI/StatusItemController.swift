@@ -12,7 +12,7 @@ final class StatusItemController: NSObject {
     init(model: AppModel) {
         self.model = model
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.autosaveName = "clipquota.combined"
+        statusItem.autosaveName = "clipbar.combined"
         host = PassthroughHostingView(rootView: AnyView(MenuBarStatusLabel().environment(model)))
         super.init()
         configurePopover()

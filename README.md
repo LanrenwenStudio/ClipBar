@@ -1,4 +1,4 @@
-# ClipQuota
+# ClipBar
 
 macOS 菜单栏小工具，用来看本机 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 里订阅账号的额度。
 
@@ -6,34 +6,34 @@ macOS 菜单栏小工具，用来看本机 [CLIProxyAPI](https://github.com/rout
 
 ## 它看什么
 
-状态栏显示最低剩余额度。点开后按渠道列出账号：
+状态栏按渠道汇总剩余额度。点开后按渠道列出账号：
 
 - **Codex / ChatGPT**：`5h` / `7d`（`/backend-api/wham/usage`）
 - **Claude OAuth**：`5h` / `7d`（`/api/oauth/usage`）
 - **Gemini CLI**：模型桶剩余（`retrieveUserQuota`）
-- **Antigravity**：模型剩余（`fetchAvailableModels`）
-- **xAI / Grok**：周额度 / 月额度（`cli-chat-proxy.grok.com/v1/billing`，和官方管理页同一条路径）
+- **Antigravity**：5 小时额度（`retrieveUserQuotaSummary`）
+- **Grok**：周额度 / 月额度（`cli-chat-proxy.grok.com/v1/billing`，和官方管理页同一条路径）
 
 ## 使用
 
 1. 本机先跑 CLIProxyAPI，默认 `http://127.0.0.1:8317`
 2. config 里设置 `remote-management.secret-key`
-3. 打开 ClipQuota，在设置里填管理地址和密钥
-4. 菜单栏会出现剩余百分比，点开看每个订阅账号
+3. 打开 ClipBar，右键状态栏打开设置，填管理地址和密钥
+4. 菜单栏会出现剩余百分比，左键点开看每个订阅账号
 
 ## 本地构建
 
 ```bash
-cd ClipQuota
+cd ClipBar
 xcodegen generate
-xcodebuild -scheme ClipQuota -destination 'platform=macOS' test
+xcodebuild -scheme ClipBar -destination 'platform=macOS' test
 ```
 
 Debug 包在 DerivedData 里。日常预览：
 
 ```bash
-xcodebuild -scheme ClipQuota -configuration Debug -destination 'platform=macOS' build
-open "$(xcodebuild -scheme ClipQuota -configuration Debug -destination 'platform=macOS' -showBuildSettings | awk -F' = ' '/BUILT_PRODUCTS_DIR/{print $2; exit}')/ClipQuota.app"
+xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=macOS' build
+open "$(xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=macOS' -showBuildSettings | awk -F' = ' '/BUILT_PRODUCTS_DIR/{print $2; exit}')/ClipBar.app"
 ```
 
 ## 设置
@@ -53,4 +53,4 @@ open "$(xcodebuild -scheme ClipQuota -configuration Debug -destination 'platform
 - 不做 Kimi 订阅额度
 - 未接 App Store / Homebrew / 官网更新通道（发版前再补）
 
-Bundle ID：`com.lanrenwen.clipquota`
+Bundle ID：`com.lanrenwen.clipbar`
