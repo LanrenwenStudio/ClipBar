@@ -126,11 +126,11 @@ struct QuotaPopoverView: View {
     }
 
     private var accountsHeight: CGFloat {
-        let height = model.visibleTabAccounts.reduce(0.0) { partial, row in
-            let windows = max(row.snapshot.windows.count, 1)
-            return partial + 52 + CGFloat(windows) * 38
+        let height = model.visibleTabAccounts.reduce(CGFloat.zero) { partial, row in
+            let windows = CGFloat(max(row.snapshot.windows.count, 1))
+            return partial + 52.0 + windows * 38.0
         }
-        return min(ClipBarTheme.popoverMaxListHeight, max(96, height))
+        return min(ClipBarTheme.popoverMaxListHeight, max(96.0, height))
     }
 
     private var headerSubtitle: String {
