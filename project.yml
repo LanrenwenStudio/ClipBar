@@ -8,6 +8,7 @@ options:
 
 settings:
   base:
+    DEVELOPMENT_TEAM: "X37879TD5Q"
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar
