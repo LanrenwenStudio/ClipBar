@@ -17,6 +17,7 @@ DIST_DIR="$ROOT_DIR/dist"
 PACKAGE_FILENAME="${PACKAGE_FILENAME:-}"
 DISTRIBUTION_MODE="${DISTRIBUTION_MODE:-local}"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-X37879TD5Q}"
+DEVELOPER_IDENTITY="${DEVELOPER_IDENTITY:-6642B7BEA10EFDAFC9E813E6C2BB98358AE46AF6}"
 DEVID_KEYCHAIN="${DEVID_KEYCHAIN:-}"
 
 require_command() {
@@ -66,7 +67,7 @@ build_developer_id_app() {
     -derivedDataPath "$DERIVED_DATA_PATH" \
     DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
     CODE_SIGN_STYLE=Manual \
-    CODE_SIGN_IDENTITY="Developer ID Application" \
+    CODE_SIGN_IDENTITY="$DEVELOPER_IDENTITY" \
     ${signing_keychain:+OTHER_CODE_SIGN_FLAGS="--keychain $signing_keychain"}
 
   cat >"$EXPORT_OPTIONS_PATH" <<EOF
@@ -78,6 +79,8 @@ build_developer_id_app() {
   <string>developer-id</string>
   <key>signingStyle</key>
   <string>manual</string>
+  <key>signingCertificate</key>
+  <string>$DEVELOPER_IDENTITY</string>
   <key>teamID</key>
   <string>$DEVELOPMENT_TEAM</string>
 </dict>
@@ -175,16 +178,24 @@ main() {
   ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$DIST_DIR/$APP_NAME.zip"
 
   if [[ "$DISTRIBUTION_MODE" == "developer-id" ]]; then
+    echo "Signing DMG package with Developer ID..."
+    codesign --force --timestamp --sign "$DEVELOPER_IDENTITY" "$working_package_path"
+
     if [[ -n "${NOTARYTOOL_KEY_PATH:-}" ]]; then
       xcrun notarytool submit "$working_package_path" --key "$NOTARYTOOL_KEY_PATH" --key-id "$NOTARYTOOL_KEY_ID" --issuer "$NOTARYTOOL_ISSUER_ID" --wait
+    elif command -v asc >/dev/null 2>&1; then
+      echo "Submitting to Apple Notary Service via asc CLI..."
+      asc notarization submit --file "$working_package_path" --wait --output table
     else
-      echo "NOTARYTOOL_KEY_PATH not specified, skipping notarytool submit" >&2
+      echo "Neither NOTARYTOOL_KEY_PATH nor asc CLI available, skipping notarization." >&2
     fi
-    xcrun stapler staple "$working_package_path" || true
+    xcrun stapler staple "$working_package_path"
+    xcrun stapler validate "$working_package_path"
     xcrun stapler staple "$STAGING_DIR/$APP_NAME.app" || true
     ditto -c -k --sequesterRsrc --keepParent "$STAGING_DIR/$APP_NAME.app" "$DIST_DIR/$APP_NAME.zip"
     hdiutil verify "$working_package_path" >/dev/null
-    spctl --assess --type execute --verbose=2 "$STAGING_DIR/$APP_NAME.app" || true
+    spctl --assess --type execute --verbose=2 "$STAGING_DIR/$APP_NAME.app"
+    spctl --assess --type open --context context:primary-signature --verbose=2 "$working_package_path"
   fi
 
   mv -f "$working_package_path" "$package_path"
