@@ -38,6 +38,22 @@ struct StatusBarSummaryTests {
         #expect(segments.first?.percent == 50)
     }
 
+    @Test("Status summaries use the selected window and fall back when absent")
+    func selectsPreferredWindow() {
+        let rows = [
+            row(id: "ag1", provider: .antigravity, remaining: [20, 80], windowIDs: ["5h", "7d"]),
+            row(id: "ag2", provider: .antigravity, remaining: [40], windowIDs: ["5h"])
+        ]
+
+        #expect(abs((StatusBarSummary.pooledRemaining(in: rows, preferredWindow: .fiveHour) ?? 0) - 30) < 0.001)
+        #expect(abs((StatusBarSummary.pooledRemaining(in: rows, preferredWindow: .weekly) ?? 0) - 60) < 0.001)
+
+        var settings = AppSettings.default
+        settings.statusQuotaWindow = .weekly
+        let segments = StatusBarSummary.segments(from: rows, settings: settings)
+        #expect(segments.first?.percent == 60)
+    }
+
     @Test("Hidden providers are omitted")
     func hiddenProviders() {
         let rows = [
@@ -72,7 +88,8 @@ struct StatusBarSummaryTests {
         id: String,
         provider: QuotaProvider,
         remaining: [Double],
-        disabled: Bool = false
+        disabled: Bool = false,
+        windowIDs: [String] = []
     ) -> AccountQuota {
         AccountQuota(
             account: AuthAccount(
@@ -93,7 +110,8 @@ struct StatusBarSummaryTests {
             snapshot: QuotaSnapshot(
                 planType: nil,
                 windows: remaining.enumerated().map { index, value in
-                    QuotaWindow(id: "w\(index)", label: "w\(index)", remainingPercent: value, resetText: nil)
+                    let id = windowIDs.indices.contains(index) ? windowIDs[index] : "w\(index)"
+                    return QuotaWindow(id: id, label: id, remainingPercent: value, resetText: nil)
                 },
                 error: remaining.isEmpty ? "none" : nil
             )

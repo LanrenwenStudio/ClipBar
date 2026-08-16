@@ -68,8 +68,8 @@ struct QuotaParserTests {
         #expect(snapshot.windows[0].label.contains("2.5-flash"))
     }
 
-    @Test("Antigravity keeps only the 5-hour remaining window")
-    func parseAntigravityFiveHourOnly() {
+    @Test("Antigravity maps 5-hour and weekly remaining windows")
+    func parseAntigravityWindows() {
         let snapshot = QuotaParser.parseAntigravity([
             "groups": [
                 [
@@ -89,9 +89,11 @@ struct QuotaParserTests {
             ]
         ])
 
-        #expect(snapshot.windows.map(\.id) == ["5h"])
+        #expect(snapshot.windows.map(\.id) == ["5h", "7d"])
         #expect(snapshot.windows[0].label == "5h")
         #expect(snapshot.windows[0].remainingPercent == 40)
+        #expect(snapshot.windows[1].label == "周额度" || snapshot.windows[1].label == "Week")
+        #expect(snapshot.windows[1].remainingPercent == 90)
     }
 
     @Test("Antigravity model fallback still collapses to one 5h bar")
@@ -150,6 +152,7 @@ struct QuotaParserTests {
         #expect(account.provider == .codex)
         #expect(account.displayName == "user@example.com")
         #expect(account.accountID == "acc-1")
+        #expect(QuotaProvider.kimi.supportsLiveQuota)
     }
 
     @Test("xAI weekly and monthly billing map remaining percent")
@@ -181,6 +184,57 @@ struct QuotaParserTests {
         #expect(merged.planType == "SuperGrok")
         #expect(monthly.windows.contains { $0.id == "month" && $0.remainingPercent == 80 })
         #expect(merged.windows.map(\.id) == ["week", "product-grok-4", "month"])
+    }
+
+    @Test("Kimi coding usage maps weekly and rate-limit windows")
+    func parseKimiWindows() {
+        let snapshot = QuotaParser.parseKimi([
+            "user": [
+                "membership": ["level": "LEVEL_MODERATO"]
+            ],
+            "usage": [
+                "limit": "2048",
+                "used": "214",
+                "remaining": "1834",
+                "resetTime": "2099-01-09T15:23:13.716839300Z"
+            ],
+            "limits": [
+                [
+                    "window": ["duration": 300, "timeUnit": "TIME_UNIT_MINUTE"],
+                    "detail": [
+                        "limit": 200,
+                        "used": 50,
+                        "remaining": 150,
+                        "reset_at": "2099-01-06T13:33:02Z"
+                    ]
+                ]
+            ]
+        ])
+
+        #expect(snapshot.planType == "Moderato")
+        #expect(snapshot.windows.map(\.id) == ["7d", "5h"])
+        #expect(abs((snapshot.windows[0].remainingPercent ?? 0) - 89.55078125) < 0.001)
+        #expect(snapshot.windows[1].remainingPercent == 75)
+        #expect(snapshot.windows[0].resetText != nil)
+    }
+
+    @Test("Kimi usages array selects the coding scope")
+    func parseKimiUsagesArray() {
+        let snapshot = QuotaParser.parseKimi([
+            "usages": [
+                [
+                    "scope": "FEATURE_OMNI",
+                    "detail": ["limit": 100, "remaining": 10]
+                ],
+                [
+                    "scope": "FEATURE_CODING",
+                    "detail": ["limit": 100, "used": 25]
+                ]
+            ]
+        ])
+
+        #expect(snapshot.windows.map(\.id) == ["7d"])
+        #expect(snapshot.windows[0].remainingPercent == 75)
     }
 
     @Test("Antigravity loadCodeAssist exposes current tier")

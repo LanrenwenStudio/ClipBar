@@ -11,10 +11,18 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let hostingController = NSHostingController(
             rootView: SettingsView().environment(model)
         )
-        hostingController.sizingOptions = [.preferredContentSize]
+        // Keep the panel at an explicit size. On macOS 26, feeding the
+        // hosting controller's preferred content size back into this panel
+        // can trigger an AppKit update-constraints loop.
+        hostingController.sizingOptions = []
 
         let window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: ClipBarTheme.settingsWidth, height: 420),
+            contentRect: NSRect(
+                x: 0,
+                y: 0,
+                width: ClipBarTheme.settingsWidth,
+                height: ClipBarTheme.settingsHeight
+            ),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false

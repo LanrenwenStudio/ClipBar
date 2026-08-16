@@ -13,10 +13,17 @@ struct SettingsProviderRow: View {
                 .foregroundStyle(.tertiary)
                 .accessibilityHidden(true)
 
-            Toggle("", isOn: $isVisible)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.mini)
+            Button(
+                isVisible
+                    ? L10n.t("隐藏 \(provider.displayName)", "Hide \(provider.displayName)")
+                    : L10n.t("显示 \(provider.displayName)", "Show \(provider.displayName)"),
+                systemImage: isVisible ? "eye.fill" : "eye.slash",
+                action: toggleVisibility
+            )
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .foregroundStyle(isVisible ? ClipBarTheme.accent : .secondary)
+            .frame(width: 24, height: 24)
 
             ProviderGlyph(provider: provider, size: 13)
 
@@ -31,6 +38,10 @@ struct SettingsProviderRow: View {
                 .font(.caption.monospacedDigit().weight(.semibold))
                 .foregroundStyle(ClipBarTheme.progressColor(for: provider, remaining: remaining))
         }
-        .frame(minHeight: 28)
+        .frame(minHeight: 34)
+    }
+
+    private func toggleVisibility() {
+        isVisible.toggle()
     }
 }

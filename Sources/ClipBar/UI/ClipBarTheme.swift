@@ -7,8 +7,11 @@ enum ClipBarTheme {
         let visible = NSScreen.main?.visibleFrame.height ?? 900
         return max(420, visible - 220)
     }
-    static let settingsWidth: CGFloat = 500
-    static let settingsHeight: CGFloat = 640
+    static let settingsWidth: CGFloat = 440
+    static var settingsHeight: CGFloat {
+        let visibleHeight = NSScreen.main?.visibleFrame.height ?? 900
+        return min(980, max(840, visibleHeight - 20))
+    }
 
     static let horizontalPadding: CGFloat = 20
     static let headerSpacing: CGFloat = 4

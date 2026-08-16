@@ -176,10 +176,27 @@ struct QuotaPopoverView: View {
     }
 
     private var pooledRemaining: Double? {
-        StatusBarSummary.pooledRemaining(in: model.visibleTabAccounts)
+        StatusBarSummary.pooledRemaining(
+            in: model.visibleTabAccounts,
+            preferredWindow: model.settings.statusQuotaWindow
+        )
     }
 
     private func refresh() {
         Task { await model.refresh() }
+    }
+}
+
+struct PopoverRootView: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        Group {
+            if model.isSettingsPresented {
+                SettingsView()
+            } else {
+                QuotaPopoverView()
+            }
+        }
     }
 }

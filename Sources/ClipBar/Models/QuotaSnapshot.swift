@@ -35,9 +35,9 @@ enum QuotaProvider: String, CaseIterable, Sendable {
 
     var supportsLiveQuota: Bool {
         switch self {
-        case .codex, .claude, .geminiCLI, .antigravity, .xai:
+        case .codex, .claude, .geminiCLI, .antigravity, .kimi, .xai:
             true
-        case .kimi, .unknown:
+        case .unknown:
             false
         }
     }
@@ -52,7 +52,7 @@ enum QuotaProvider: String, CaseIterable, Sendable {
             .geminiCLI
         case "antigravity":
             .antigravity
-        case "kimi":
+        case "kimi", "kimi-ai", "moonshot":
             .kimi
         case "xai", "x-ai", "grok":
             .xai

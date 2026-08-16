@@ -86,34 +86,27 @@ enum QuotaParser {
     }
 
     static func parseAntigravity(_ object: [String: Any]) -> QuotaSnapshot {
+        var windows: [QuotaWindow] = []
         if let fiveHour = antigravityFiveHourWindow(from: object) {
-            return QuotaSnapshot(planType: parseGoogleAssistTier(object), windows: [fiveHour], error: nil)
+            windows.append(fiveHour)
         }
-        return QuotaSnapshot(planType: parseGoogleAssistTier(object), windows: [], error: "empty quota payload")
+        if let weekly = antigravityWeeklyWindow(from: object) {
+            windows.append(weekly)
+        }
+        return QuotaSnapshot(
+            planType: parseGoogleAssistTier(object),
+            windows: windows,
+            error: windows.isEmpty ? "empty quota payload" : nil
+        )
     }
 
     static func antigravityFiveHourWindow(from object: [String: Any]) -> QuotaWindow? {
         if let groups = object["groups"] as? [[String: Any]] {
-            var remainings: [Double] = []
-            var reset: String?
-            for group in groups {
-                let buckets = (group["buckets"] as? [[String: Any]]) ?? []
-                for bucket in buckets {
-                    guard isFiveHourWindow(JSONValue.firstString(bucket, paths: ["window"])) else { continue }
-                    if let remaining = remainingPercent(from: bucket) {
-                        remainings.append(remaining)
-                    }
-                    if reset == nil {
-                        reset = formatReset(JSONValue.firstString(bucket, paths: ["resetTime", "reset_time"]))
-                    }
-                }
-            }
-            guard !remainings.isEmpty else { return nil }
-            return QuotaWindow(
+            return antigravityGroupedWindow(
+                groups: groups,
                 id: "5h",
                 label: "5h",
-                remainingPercent: remainings.reduce(0, +) / Double(remainings.count),
-                resetText: reset
+                matches: isFiveHourWindow
             )
         }
 
@@ -146,12 +139,69 @@ enum QuotaParser {
         )
     }
 
+    static func antigravityWeeklyWindow(from object: [String: Any]) -> QuotaWindow? {
+        guard let groups = object["groups"] as? [[String: Any]] else { return nil }
+        return antigravityGroupedWindow(
+            groups: groups,
+            id: "7d",
+            label: L10n.t("周额度", "Week"),
+            matches: isWeeklyWindow
+        )
+    }
+
+    private static func antigravityGroupedWindow(
+        groups: [[String: Any]],
+        id: String,
+        label: String,
+        matches: (String?) -> Bool
+    ) -> QuotaWindow? {
+        var remainings: [Double] = []
+        var reset: String?
+        for group in groups {
+            let buckets = (group["buckets"] as? [[String: Any]]) ?? []
+            for bucket in buckets {
+                guard matches(JSONValue.firstString(bucket, paths: ["window"])) else { continue }
+                if let remaining = remainingPercent(from: bucket) {
+                    remainings.append(remaining)
+                }
+                if reset == nil {
+                    reset = formatReset(JSONValue.firstString(bucket, paths: ["resetTime", "reset_time"]))
+                }
+            }
+        }
+        guard !remainings.isEmpty else { return nil }
+        return QuotaWindow(
+            id: id,
+            label: label,
+            remainingPercent: remainings.reduce(0, +) / Double(remainings.count),
+            resetText: reset
+        )
+    }
+
     private static func isFiveHourWindow(_ raw: String?) -> Bool {
-        let value = (raw ?? "")
+        let value = normalizedWindowName(raw)
+        return value == "5h" || value == "five-hour" || value == "fivehour" || value.contains("5-hour")
+    }
+
+    private static func isWeeklyWindow(_ raw: String?) -> Bool {
+        let value = normalizedWindowName(raw)
+        return value == "7d"
+            || value == "7-day"
+            || value == "7day"
+            || value == "seven-day"
+            || value == "sevenday"
+            || value == "weekly"
+            || value == "week"
+            || value.contains("7-day")
+            || value.contains("seven-day")
+            || value.contains("weekly")
+    }
+
+    private static func normalizedWindowName(_ raw: String?) -> String {
+        (raw ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .replacingOccurrences(of: "_", with: "-")
             .lowercased()
-        return value == "5h" || value == "five-hour" || value == "fivehour" || value.contains("5-hour")
     }
 
     static func parseXai(_ object: [String: Any]) -> QuotaSnapshot {
@@ -215,6 +265,46 @@ enum QuotaParser {
         )
     }
 
+    static func parseKimi(_ object: [String: Any]) -> QuotaSnapshot {
+        let (usageDetail, limits) = kimiUsageDetails(from: object)
+        var windows: [QuotaWindow] = []
+
+        if let usageDetail,
+           let weekly = kimiWindow(id: "7d", label: "7d", detail: usageDetail) {
+            windows.append(weekly)
+        }
+
+        for limit in limits {
+            guard let window = limit["window"] as? [String: Any],
+                  let detail = limit["detail"] as? [String: Any],
+                  let label = kimiWindowLabel(from: window),
+                  let quotaWindow = kimiWindow(id: label, label: label, detail: detail)
+            else {
+                continue
+            }
+
+            if let existingIndex = windows.firstIndex(where: { $0.id == quotaWindow.id }) {
+                let existing = windows[existingIndex]
+                guard existing.remainingPercent != quotaWindow.remainingPercent
+                    || existing.resetText != quotaWindow.resetText
+                else {
+                    continue
+                }
+                var distinctWindow = quotaWindow
+                distinctWindow.id = "\(label)-\(existingIndex + 2)"
+                windows.append(distinctWindow)
+            } else {
+                windows.append(quotaWindow)
+            }
+        }
+
+        return QuotaSnapshot(
+            planType: kimiPlan(from: object),
+            windows: windows,
+            error: windows.isEmpty ? "empty quota payload" : nil
+        )
+    }
+
     static func mergeXai(weekly: QuotaSnapshot, monthly: QuotaSnapshot) -> QuotaSnapshot {
         var byID: [String: QuotaWindow] = [:]
         for window in weekly.windows + monthly.windows where byID[window.id] == nil {
@@ -227,6 +317,125 @@ enum QuotaParser {
             windows: windows,
             error: windows.isEmpty ? (weekly.error ?? monthly.error) : nil
         )
+    }
+
+    private static func kimiUsageDetails(from object: [String: Any]) -> (
+        detail: [String: Any]?,
+        limits: [[String: Any]]
+    ) {
+        let topLevelLimits = object["limits"] as? [[String: Any]] ?? []
+
+        if let usage = object["usage"] as? [String: Any] {
+            let detail = (usage["detail"] as? [String: Any]) ?? usage
+            let limits = usage["limits"] as? [[String: Any]] ?? topLevelLimits
+            return (detail, limits)
+        }
+
+        if let usages = object["usages"] as? [[String: Any]],
+           let codingUsage = usages.first(where: {
+               JSONValue.firstString($0, paths: ["scope"])?.uppercased() == "FEATURE_CODING"
+           }) ?? usages.first {
+            let detail = codingUsage["detail"] as? [String: Any]
+            let limits = codingUsage["limits"] as? [[String: Any]] ?? topLevelLimits
+            return (detail, limits)
+        }
+
+        if let detail = object["detail"] as? [String: Any] {
+            return (detail, topLevelLimits)
+        }
+        if object["limit"] != nil {
+            return (object, topLevelLimits)
+        }
+        return (nil, topLevelLimits)
+    }
+
+    private static func kimiWindow(
+        id: String,
+        label: String,
+        detail: [String: Any]
+    ) -> QuotaWindow? {
+        guard let remainingPercent = kimiRemainingPercent(from: detail) else {
+            return nil
+        }
+        return QuotaWindow(
+            id: id,
+            label: label,
+            remainingPercent: remainingPercent,
+            resetText: formatReset(JSONValue.firstString(detail, paths: [
+                "resetTime",
+                "reset_time",
+                "resetAt",
+                "reset_at"
+            ]))
+        )
+    }
+
+    private static func kimiRemainingPercent(from detail: [String: Any]) -> Double? {
+        guard let limit = JSONValue.firstDouble(detail, paths: ["limit"]), limit > 0 else {
+            return nil
+        }
+        if let remaining = JSONValue.firstDouble(detail, paths: ["remaining"]) {
+            return JSONValue.clampPercent(remaining / limit * 100)
+        }
+        if let used = JSONValue.firstDouble(detail, paths: ["used"]) {
+            return JSONValue.clampPercent(100 - used / limit * 100)
+        }
+        return nil
+    }
+
+    private static func kimiWindowLabel(from window: [String: Any]) -> String? {
+        guard let duration = JSONValue.firstDouble(window, paths: ["duration"]), duration > 0,
+              let rawUnit = JSONValue.firstString(window, paths: ["timeUnit", "time_unit"])
+        else {
+            return nil
+        }
+
+        let unit = rawUnit.uppercased()
+        switch unit {
+        case "TIME_UNIT_MINUTE", "MINUTE", "MINUTES":
+            if duration.truncatingRemainder(dividingBy: 60) == 0 {
+                return "\(Int(duration / 60))h"
+            }
+            return "\(Int(duration))m"
+        case "TIME_UNIT_HOUR", "HOUR", "HOURS":
+            return "\(Int(duration))h"
+        case "TIME_UNIT_DAY", "DAY", "DAYS":
+            return "\(Int(duration))d"
+        case "TIME_UNIT_WEEK", "WEEK", "WEEKS":
+            return "\(Int(duration))w"
+        default:
+            return nil
+        }
+    }
+
+    private static func kimiPlan(from object: [String: Any]) -> String? {
+        guard let raw = JSONValue.firstString(object, paths: [
+            "user.membership.level",
+            "user.membership.name",
+            "membership.level",
+            "membership.name",
+            "plan_type",
+            "planType",
+            "plan",
+            "subscription",
+            "tier",
+            "level"
+        ]) else {
+            return nil
+        }
+
+        var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        for prefix in ["LEVEL_", "PLAN_", "TIER_", "MEMBERSHIP_"] {
+            if value.uppercased().hasPrefix(prefix) {
+                value = String(value.dropFirst(prefix.count))
+                break
+            }
+        }
+        let formatted = value
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+            .localizedCapitalized
+        return formatted.isEmpty ? nil : formatted
     }
 
     static func parseGoogleAssistTier(_ object: [String: Any]) -> String? {

@@ -21,7 +21,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         statusItems = StatusItemController(model: model)
         if CommandLine.arguments.contains("--open-settings") {
-            model.openSettings()
+            Task { @MainActor [weak self] in
+                await Task.yield()
+                self?.statusItems?.presentSettings()
+            }
         }
     }
 }

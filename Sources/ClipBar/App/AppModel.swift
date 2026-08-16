@@ -9,6 +9,10 @@ final class AppModel {
     var connection: ConnectionState = .unconfigured
     var lastRefreshedAt: Date?
     var selectedProvider: QuotaProvider?
+    var launchAtLoginStatus: LaunchAtLoginStatus
+    var launchAtLoginError: String?
+    var isSettingsPresented = false
+    var popoverDismissalRequest = 0
 
     @ObservationIgnored
     private let store: SettingsStore
@@ -17,12 +21,19 @@ final class AppModel {
     @ObservationIgnored
     private var refreshTask: Task<Void, Never>?
     @ObservationIgnored
-    private var settingsWindow: SettingsWindowController?
+    private let launchAtLoginService: LaunchAtLoginService
 
-    init(store: SettingsStore = SettingsStore()) {
+    init(
+        store: SettingsStore = SettingsStore(),
+        launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService()
+    ) {
+        self.launchAtLoginService = launchAtLoginService
         self.store = store
-        self.settings = store.load()
-        self.connection = settings.isConfigured ? .idle : .unconfigured
+        let loadedSettings = store.load()
+        self.settings = loadedSettings
+        self.connection = loadedSettings.isConfigured ? .idle : .unconfigured
+        self.launchAtLoginStatus = launchAtLoginService.status
+        self.launchAtLoginError = nil
         start()
     }
 
@@ -126,6 +137,11 @@ final class AppModel {
         persistPreferences()
     }
 
+    func setStatusQuotaWindow(_ window: StatusQuotaWindow) {
+        settings.statusQuotaWindow = window
+        persistPreferences()
+    }
+
     func moveStatusItems(from source: IndexSet, to destination: Int) {
         var order = orderedPreferenceProviders
         order.move(fromOffsets: source, toOffset: destination)
@@ -134,16 +150,32 @@ final class AppModel {
     }
 
     func openSettings() {
-        if settingsWindow == nil {
-            settingsWindow = SettingsWindowController(model: self) { [weak self] in
-                self?.settingsWindow = nil
-            }
-        }
-        settingsWindow?.present()
+        refreshLaunchAtLoginStatus()
+        isSettingsPresented = true
     }
 
     func closeSettings() {
-        settingsWindow?.close()
+        isSettingsPresented = false
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        launchAtLoginStatus = launchAtLoginService.status
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        launchAtLoginError = nil
+        guard enabled != launchAtLoginStatus.isRegistered else { return }
+
+        do {
+            try launchAtLoginService.setEnabled(enabled)
+            refreshLaunchAtLoginStatus()
+        } catch {
+            refreshLaunchAtLoginStatus()
+            launchAtLoginError = L10n.t(
+                "无法设置登录时启动：\(error.localizedDescription)",
+                "Could not change launch at login: \(error.localizedDescription)"
+            )
+        }
     }
 
     func saveSettings(_ next: AppSettings) {
@@ -151,7 +183,7 @@ final class AppModel {
         settings.managementKey = next.normalizedManagementKey
         settings.refreshSeconds = next.clampedRefreshSeconds
         persistPreferences()
-        closeSettings()
+        popoverDismissalRequest += 1
         restartPolling()
         Task { await refresh() }
     }

@@ -24,8 +24,13 @@ targets:
       - path: Sources/ClipBar
         excludes:
           - Resources/Icons/**
+          - Resources/ClipBarIcon.png
+          - Resources/ClipBarIcon.icns
       - path: Sources/ClipBar/Resources/Icons
         type: folder
+        buildPhase: resources
+      - path: Sources/ClipBar/Resources/ClipBarIcon.icns
+        type: file
         buildPhase: resources
     settings:
       base:

@@ -8,6 +8,7 @@ struct SettingsStore {
         static let statusItemOrder = "clipbar.statusItemOrder"
         static let hiddenStatusItemIDs = "clipbar.hiddenStatusItemIDs"
         static let hideEmptyStatusItems = "clipbar.hideEmptyStatusItems"
+        static let statusQuotaWindow = "clipbar.statusQuotaWindow"
     }
 
     private let defaults: UserDefaults
@@ -34,6 +35,10 @@ struct SettingsStore {
         if defaults.object(forKey: Key.hideEmptyStatusItems) != nil {
             settings.hideEmptyStatusItems = defaults.bool(forKey: Key.hideEmptyStatusItems)
         }
+        if let raw = defaults.string(forKey: Key.statusQuotaWindow),
+           let window = StatusQuotaWindow(rawValue: raw) {
+            settings.statusQuotaWindow = window
+        }
         return settings
     }
 
@@ -44,6 +49,7 @@ struct SettingsStore {
         defaults.set(settings.statusItemOrder, forKey: Key.statusItemOrder)
         defaults.set(settings.hiddenStatusItemIDs, forKey: Key.hiddenStatusItemIDs)
         defaults.set(settings.hideEmptyStatusItems, forKey: Key.hideEmptyStatusItems)
+        defaults.set(settings.statusQuotaWindow.rawValue, forKey: Key.statusQuotaWindow)
     }
 
     private func migrateLegacyKeysIfNeeded() {
@@ -54,7 +60,8 @@ struct SettingsStore {
             ("clipquota.refreshSeconds", Key.refreshSeconds),
             ("clipquota.statusItemOrder", Key.statusItemOrder),
             ("clipquota.hiddenStatusItemIDs", Key.hiddenStatusItemIDs),
-            ("clipquota.hideEmptyStatusItems", Key.hideEmptyStatusItems)
+            ("clipquota.hideEmptyStatusItems", Key.hideEmptyStatusItems),
+            ("clipquota.statusQuotaWindow", Key.statusQuotaWindow)
         ]
         for (old, new) in pairs {
             if defaults.object(forKey: new) == nil, let value = defaults.object(forKey: old) {

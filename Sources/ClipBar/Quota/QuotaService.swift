@@ -48,9 +48,11 @@ struct QuotaService: Sendable {
             try await fetchGemini(account)
         case .antigravity:
             try await fetchAntigravity(account)
+        case .kimi:
+            try await fetchKimi(account)
         case .xai:
             try await fetchXai(account)
-        case .kimi, .unknown:
+        case .unknown:
             QuotaSnapshot(
                 planType: nil,
                 windows: [],
@@ -90,6 +92,21 @@ struct QuotaService: Sendable {
             ]
         )
         return try decode(response, using: QuotaParser.parseClaude)
+    }
+
+    private func fetchKimi(_ account: AuthAccount) async throws -> QuotaSnapshot {
+        let response = try await client.apiCall(
+            authIndex: account.authIndex,
+            method: "GET",
+            url: "https://api.kimi.com/coding/v1/usages",
+            headers: [
+                "Authorization": "Bearer $TOKEN$",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-Msh-Platform": "CLIProxyAPI"
+            ]
+        )
+        return try decode(response, using: QuotaParser.parseKimi)
     }
 
     private func fetchGemini(_ account: AuthAccount) async throws -> QuotaSnapshot {
@@ -134,7 +151,7 @@ struct QuotaService: Sendable {
                 if snapshot.hasLiveData {
                     return snapshot
                 }
-                lastError = snapshot.error ?? "empty 5h quota"
+                lastError = snapshot.error ?? "empty quota"
                 continue
             }
             lastError = response.body.isEmpty ? "HTTP \(response.statusCode)" : response.body

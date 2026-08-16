@@ -11,7 +11,8 @@ macOS 菜单栏小工具，用来看本机 [CLIProxyAPI](https://github.com/rout
 - **Codex / ChatGPT**：`5h` / `7d`（`/backend-api/wham/usage`）
 - **Claude OAuth**：`5h` / `7d`（`/api/oauth/usage`）
 - **Gemini CLI**：模型桶剩余（`retrieveUserQuota`）
-- **Antigravity**：5 小时额度（`retrieveUserQuotaSummary`）
+- **Antigravity**：5 小时 / 周额度（`retrieveUserQuotaSummary`，状态栏可切换优先窗口）
+- **Kimi**：7 天额度 / 5 小时速率限制（`api.kimi.com/coding/v1/usages`）
 - **Grok**：周额度 / 月额度（`cli-chat-proxy.grok.com/v1/billing`，和官方管理页同一条路径）
 
 ## 使用
@@ -43,6 +44,8 @@ open "$(xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=m
 - 管理地址，默认 `http://127.0.0.1:8317`
 - 管理密钥
 - 刷新间隔，默认 60 秒
+- 登录时启动
+- 状态栏汇总优先窗口，默认 5 小时，可切换为周额度
 
 密钥只发给你填的 Management API，不会上传到别处。
 
@@ -50,7 +53,22 @@ open "$(xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=m
 
 - 不内嵌、不托管 CLIProxyAPI 进程
 - 不做 OAuth 登录、账号增删
-- 不做 Kimi 订阅额度
-- 未接 App Store / Homebrew / 官网更新通道（发版前再补）
+- 未接 App Store / 官网更新通道
+
+## Homebrew 安装
+
+发布 GitHub Release 后，可以直接通过 Cask 安装：
+
+```bash
+brew install --cask https://raw.githubusercontent.com/LanrenwenStudio/ClipBar/main/Casks/clipbar.rb
+```
+
+卸载：
+
+```bash
+brew uninstall --cask clipbar
+```
+
+给 `v*` tag 创建 Release 时，GitHub Actions 会自动构建通用 macOS 包并上传 `ClipBar.zip`。当前构建使用本机临时签名；正式分发前仍需换成 Apple Developer ID 签名并完成公证。
 
 Bundle ID：`com.lanrenwen.clipbar`
