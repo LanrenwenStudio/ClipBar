@@ -79,7 +79,7 @@ final class AppModel {
 
     var groupedAccounts: [(provider: QuotaProvider, rows: [AccountQuota])] {
         orderedPreferenceProviders.compactMap { provider in
-            let rows = accounts.filter { $0.account.provider == provider }
+            let rows = sortedAccounts(accounts.filter { $0.account.provider == provider })
             return rows.isEmpty ? nil : (provider, rows)
         }
     }
@@ -92,7 +92,7 @@ final class AppModel {
     }
 
     var visibleTabAccounts: [AccountQuota] {
-        accounts.filter { $0.account.provider == visibleProvider }
+        sortedAccounts(accounts.filter { $0.account.provider == visibleProvider })
     }
 
     var orderedPreferenceProviders: [QuotaProvider] {
@@ -100,7 +100,10 @@ final class AppModel {
     }
 
     var healthyCount: Int {
-        accounts.filter { $0.account.isRoutable && !$0.snapshot.windows.contains(where: \.isExhausted) }.count
+        accounts.filter { row in
+            let isLocallyDisabled = settings.isAccountDisabled(statusKey: row.account.statusKey, serverDisabled: row.account.disabled)
+            return !isLocallyDisabled && row.account.isRoutable && !row.snapshot.windows.contains(where: \.isExhausted)
+        }.count
     }
 
     func selectProvider(_ provider: QuotaProvider) {
@@ -142,9 +145,107 @@ final class AppModel {
         persistPreferences()
     }
 
+    func toggleAccountDisabled(_ row: AccountQuota) {
+        let key = row.account.statusKey
+        if settings.disabledAccountKeys.contains(key) {
+            settings.disabledAccountKeys.removeAll { $0 == key }
+        } else {
+            settings.disabledAccountKeys.append(key)
+        }
+        persistPreferences()
+    }
+
+    func toggleAccountPinned(_ row: AccountQuota) {
+        let key = row.account.statusKey
+        if settings.pinnedAccountKeys.contains(key) {
+            settings.pinnedAccountKeys.removeAll { $0 == key }
+        } else {
+            settings.pinnedAccountKeys.append(key)
+        }
+        persistPreferences()
+    }
+
+    func isAccountDisabled(_ row: AccountQuota) -> Bool {
+        settings.isAccountDisabled(statusKey: row.account.statusKey, serverDisabled: row.account.disabled)
+    }
+
+    func isAccountPinned(_ row: AccountQuota) -> Bool {
+        settings.isAccountPinned(statusKey: row.account.statusKey)
+    }
+    func isProviderHidden(_ provider: QuotaProvider) -> Bool {
+        settings.isProviderHidden(provider)
+    }
+
+    func toggleProviderHidden(_ provider: QuotaProvider) {
+        settings.toggleProviderHidden(provider)
+        persistPreferences()
+    }
+
+    func setSortByRemainingQuota(_ value: Bool) {
+        settings.sortByRemainingQuota = value
+        persistPreferences()
+    }
+
+    func setLowQuotaAlertThreshold(_ value: Int) {
+        settings.lowQuotaAlertThreshold = value
+        persistPreferences()
+    }
+
+    func setEnableNotifications(_ value: Bool) {
+        settings.enableNotifications = value
+        if value {
+            NotificationManager.shared.requestAuthorization()
+        }
+        persistPreferences()
+    }
+    func setAppTheme(_ theme: AppTheme) {
+        settings.appTheme = theme
+        persistPreferences()
+    }
+
+
+    func sortedAccounts(_ rows: [AccountQuota]) -> [AccountQuota] {
+        rows.sorted { a, b in
+            let aPinned = settings.isAccountPinned(statusKey: a.account.statusKey)
+            let bPinned = settings.isAccountPinned(statusKey: b.account.statusKey)
+            if aPinned != bPinned {
+                return aPinned && !bPinned
+            }
+
+            let aDisabled = settings.isAccountDisabled(statusKey: a.account.statusKey, serverDisabled: a.account.disabled)
+            let bDisabled = settings.isAccountDisabled(statusKey: b.account.statusKey, serverDisabled: b.account.disabled)
+            if aDisabled != bDisabled {
+                return !aDisabled && bDisabled
+            }
+
+            if settings.sortByRemainingQuota {
+                let aPercent = a.snapshot.windows.compactMap(\.remainingPercent).first ?? -1
+                let bPercent = b.snapshot.windows.compactMap(\.remainingPercent).first ?? -1
+                if aPercent != bPercent {
+                    return aPercent > bPercent
+                }
+            }
+            return a.account.displayName.localizedCaseInsensitiveCompare(b.account.displayName) == .orderedAscending
+        }
+    }
+
     func moveStatusItems(from source: IndexSet, to destination: Int) {
         var order = orderedPreferenceProviders
         order.move(fromOffsets: source, toOffset: destination)
+        settings.statusItemOrder = order.map(\.rawValue)
+        persistPreferences()
+    }
+
+    func reorderProvider(from sourceID: String, to targetID: String) {
+        guard let source = QuotaProvider(rawValue: sourceID),
+              let target = QuotaProvider(rawValue: targetID),
+              source != target else { return }
+        var order = orderedPreferenceProviders
+        guard let fromIndex = order.firstIndex(of: source),
+              let toIndex = order.firstIndex(of: target) else { return }
+        order.remove(at: fromIndex)
+        let insertIndex = order.firstIndex(of: target) ?? order.endIndex
+        order.insert(source, at: insertIndex)
         settings.statusItemOrder = order.map(\.rawValue)
         persistPreferences()
     }
@@ -185,13 +286,13 @@ final class AppModel {
         persistPreferences()
         popoverDismissalRequest += 1
         restartPolling()
-        Task { await refresh() }
     }
 
     func refresh() async {
         guard settings.isConfigured else {
             connection = .unconfigured
             accounts = []
+            WidgetDataStore.shared.syncFrom(accounts: [], settings: settings, connection: .unconfigured)
             return
         }
         refreshTask?.cancel()
@@ -200,18 +301,19 @@ final class AppModel {
         refreshTask = Task {
             do {
                 let rows = try await QuotaService(client: ManagementClient(settings: settings)).refresh()
-                guard !Task.isCancelled else { return }
                 accounts = rows
                 lastRefreshedAt = Date()
                 connection = .online
                 if selectedProvider == nil {
                     selectedProvider = rows.first?.account.provider
                 }
-            } catch is CancellationError {
+                WidgetDataStore.shared.syncFrom(accounts: rows, settings: settings, connection: .online)
+                NotificationManager.shared.checkAndNotify(accounts: rows, settings: settings)
                 return
             } catch {
                 guard !Task.isCancelled else { return }
                 connection = .failed(error.localizedDescription)
+                WidgetDataStore.shared.syncFrom(accounts: accounts, settings: settings, connection: .failed(error.localizedDescription))
             }
         }
         await refreshTask?.value
@@ -219,6 +321,7 @@ final class AppModel {
 
     private func persistPreferences() {
         store.save(settings)
+        WidgetDataStore.shared.syncFrom(accounts: accounts, settings: settings, connection: connection)
     }
 
     private func start() {

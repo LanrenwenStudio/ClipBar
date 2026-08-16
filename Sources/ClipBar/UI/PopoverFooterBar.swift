@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import SwiftUI
 
@@ -28,3 +29,4 @@ struct PopoverFooterBar: View {
         NSApp.terminate(nil)
     }
 }
+#endif

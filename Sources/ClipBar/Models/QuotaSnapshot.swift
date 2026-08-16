@@ -1,6 +1,7 @@
 import Foundation
 
-enum QuotaProvider: String, CaseIterable, Sendable {
+enum QuotaProvider: String, CaseIterable, Identifiable, Sendable {
+    var id: String { rawValue }
     case codex
     case claude
     case geminiCLI = "gemini-cli"

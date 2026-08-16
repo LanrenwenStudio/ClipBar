@@ -9,6 +9,12 @@ struct SettingsStore {
         static let hiddenStatusItemIDs = "clipbar.hiddenStatusItemIDs"
         static let hideEmptyStatusItems = "clipbar.hideEmptyStatusItems"
         static let statusQuotaWindow = "clipbar.statusQuotaWindow"
+        static let disabledAccountKeys = "clipbar.disabledAccountKeys"
+        static let pinnedAccountKeys = "clipbar.pinnedAccountKeys"
+        static let lowQuotaAlertThreshold = "clipbar.lowQuotaAlertThreshold"
+        static let enableNotifications = "clipbar.enableNotifications"
+        static let sortByRemainingQuota = "clipbar.sortByRemainingQuota"
+        static let appTheme = "clipbar.appTheme"
     }
 
     private let defaults: UserDefaults
@@ -39,6 +45,21 @@ struct SettingsStore {
            let window = StatusQuotaWindow(rawValue: raw) {
             settings.statusQuotaWindow = window
         }
+        settings.disabledAccountKeys = defaults.stringArray(forKey: Key.disabledAccountKeys) ?? []
+        settings.pinnedAccountKeys = defaults.stringArray(forKey: Key.pinnedAccountKeys) ?? []
+        if defaults.object(forKey: Key.lowQuotaAlertThreshold) != nil {
+            settings.lowQuotaAlertThreshold = defaults.integer(forKey: Key.lowQuotaAlertThreshold)
+        }
+        if defaults.object(forKey: Key.enableNotifications) != nil {
+            settings.enableNotifications = defaults.bool(forKey: Key.enableNotifications)
+        }
+        if let rawTheme = defaults.string(forKey: Key.appTheme),
+           let theme = AppTheme(rawValue: rawTheme) {
+            settings.appTheme = theme
+        }
+        if defaults.object(forKey: Key.sortByRemainingQuota) != nil {
+            settings.sortByRemainingQuota = defaults.bool(forKey: Key.sortByRemainingQuota)
+        }
         return settings
     }
 
@@ -50,6 +71,12 @@ struct SettingsStore {
         defaults.set(settings.hiddenStatusItemIDs, forKey: Key.hiddenStatusItemIDs)
         defaults.set(settings.hideEmptyStatusItems, forKey: Key.hideEmptyStatusItems)
         defaults.set(settings.statusQuotaWindow.rawValue, forKey: Key.statusQuotaWindow)
+        defaults.set(settings.disabledAccountKeys, forKey: Key.disabledAccountKeys)
+        defaults.set(settings.pinnedAccountKeys, forKey: Key.pinnedAccountKeys)
+        defaults.set(settings.lowQuotaAlertThreshold, forKey: Key.lowQuotaAlertThreshold)
+        defaults.set(settings.enableNotifications, forKey: Key.enableNotifications)
+        defaults.set(settings.sortByRemainingQuota, forKey: Key.sortByRemainingQuota)
+        defaults.set(settings.appTheme.rawValue, forKey: Key.appTheme)
     }
 
     private func migrateLegacyKeysIfNeeded() {

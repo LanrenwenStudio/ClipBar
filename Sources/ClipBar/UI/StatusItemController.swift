@@ -1,3 +1,4 @@
+#if os(macOS)
 import AppKit
 import Observation
 import SwiftUI
@@ -162,3 +163,4 @@ private final class PassthroughHostingView<Content: View>: NSHostingView<Content
         nil
     }
 }
+#endif

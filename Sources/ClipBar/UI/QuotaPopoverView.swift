@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftUI
 
 struct QuotaPopoverView: View {
@@ -21,10 +22,9 @@ struct QuotaPopoverView: View {
             Rectangle()
                 .fill(ClipBarTheme.brandColor(for: model.visibleProvider))
                 .frame(height: 2)
-                .animation(nil, value: model.visibleProvider)
+                .animation(.easeInOut(duration: 0.2), value: model.visibleProvider)
         }
     }
-
     private var header: some View {
         HStack(alignment: .center, spacing: ClipBarTheme.spacingM) {
             VStack(alignment: .leading, spacing: 2) {
@@ -200,3 +200,4 @@ struct PopoverRootView: View {
         }
     }
 }
+#endif

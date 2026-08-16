@@ -44,17 +44,23 @@ enum StatusBarSummary {
         return ordered
     }
 
-    static func enabledAccounts(in rows: [AccountQuota]) -> [AccountQuota] {
-        rows.filter { !$0.account.disabled }
+    static func enabledAccounts(in rows: [AccountQuota], settings: AppSettings? = nil) -> [AccountQuota] {
+        rows.filter { row in
+            if row.account.disabled { return false }
+            if let settings, settings.disabledAccountKeySet.contains(row.account.statusKey) {
+                return false
+            }
+            return true
+        }
     }
 
     static func segments(from accounts: [AccountQuota], settings: AppSettings) -> [StatusSegment] {
         let hidden = settings.hiddenStatusItemIDSet
         return orderedProviders(from: accounts, settings: settings).compactMap { provider in
             guard !hidden.contains(provider.rawValue) else { return nil }
-            let rows = enabledAccounts(in: accounts.filter { $0.account.provider == provider })
+            let rows = enabledAccounts(in: accounts.filter { $0.account.provider == provider }, settings: settings)
             guard !rows.isEmpty else { return nil }
-            let remaining = pooledRemaining(in: rows, preferredWindow: settings.statusQuotaWindow)
+            let remaining = pooledRemaining(in: rows, preferredWindow: settings.statusQuotaWindow, settings: settings)
             if settings.hideEmptyStatusItems, let remaining, remaining <= 0 {
                 return nil
             }
@@ -72,9 +78,10 @@ enum StatusBarSummary {
     /// selected quota window when available, falling back to the other window when needed.
     static func pooledRemaining(
         in rows: [AccountQuota],
-        preferredWindow: StatusQuotaWindow = .fiveHour
+        preferredWindow: StatusQuotaWindow = .fiveHour,
+        settings: AppSettings? = nil
     ) -> Double? {
-        let enabled = enabledAccounts(in: rows)
+        let enabled = enabledAccounts(in: rows, settings: settings)
         guard !enabled.isEmpty else { return nil }
         var remainingUnits = 0.0
         for row in enabled {

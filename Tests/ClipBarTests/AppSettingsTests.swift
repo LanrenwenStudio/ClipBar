@@ -3,12 +3,16 @@ import Testing
 @testable import ClipBar
 
 struct AppSettingsTests {
-    @Test("Refresh interval normalizes to the three supported presets")
+    @Test("Refresh interval normalizes to supported presets and defaults to 5 minutes")
     func normalizesRefreshInterval() {
+        #expect(AppSettings.default.refreshSeconds == 300)
         #expect(AppSettings.nearestRefreshInterval(to: 15) == 60)
         #expect(AppSettings.nearestRefreshInterval(to: 60) == 60)
         #expect(AppSettings.nearestRefreshInterval(to: 180) == 180)
-        #expect(AppSettings.nearestRefreshInterval(to: 600) == 300)
+        #expect(AppSettings.nearestRefreshInterval(to: 300) == 300)
+        #expect(AppSettings.nearestRefreshInterval(to: 550) == 600)
+        #expect(AppSettings.nearestRefreshInterval(to: 600) == 600)
+        #expect(AppSettings.nearestRefreshInterval(to: 1000) == 900)
     }
 
     @Test("Status quota window defaults to 5h")

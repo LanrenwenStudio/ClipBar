@@ -8,13 +8,17 @@ struct ConnectionBadge: View {
         HStack(spacing: 5) {
             Circle()
                 .fill(color)
-                .frame(width: 6, height: 6)
+                .frame(width: 5, height: 5)
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.caption2.weight(.medium))
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
-        .background(color.opacity(0.14), in: Capsule())
+        .padding(.horizontal, 7)
+        .padding(.vertical, 2.5)
+        .background(Color.primary.opacity(0.06), in: Capsule())
+        .overlay {
+            Capsule()
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.8)
+        }
         .foregroundStyle(color)
     }
 }

@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftUI
 
 struct MenuBarStatusLabel: View {
@@ -38,3 +39,4 @@ struct MenuBarStatusLabel: View {
         .accessibilityLabel(model.statusAccessibilityLabel)
     }
 }
+#endif

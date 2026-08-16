@@ -1,3 +1,4 @@
+#if os(macOS)
 import SwiftUI
 
 struct SettingsView: View {
@@ -22,15 +23,31 @@ struct SettingsView: View {
                     }
 
                     SettingsSection(
-                        title: L10n.t("显示与行为", "Display & behavior"),
+                        title: L10n.t("显示与偏好", "Display & Preferences"),
                         subtitle: L10n.t(
-                            "控制启动方式和额度汇总的显示规则。",
-                            "Control startup and quota summary behavior."
+                            "控制启动方式、额度汇总与账号排序规则。",
+                            "Control startup, quota summary, and account sorting behavior."
                         )
                     ) {
                         launchAtLoginRow
                         Divider()
                         statusQuotaWindowRow
+                        Divider()
+                        sortByRemainingRow
+                    }
+
+                    SettingsSection(
+                        title: L10n.t("告警与通知", "Alerts & Notifications"),
+                        subtitle: L10n.t(
+                            "当订阅额度过低或耗尽时接收 macOS 系统通知提醒。",
+                            "Receive macOS system notifications when subscription quota is low or exhausted."
+                        )
+                    ) {
+                        notificationsRow
+                        if model.settings.enableNotifications {
+                            Divider()
+                            lowQuotaAlertRow
+                        }
                     }
 
                     SettingsSection(
@@ -54,11 +71,6 @@ struct SettingsView: View {
         .background(.regularMaterial)
         .tint(ClipBarTheme.accent)
         .frame(width: ClipBarTheme.settingsWidth, height: ClipBarTheme.settingsHeight)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(ClipBarTheme.accent)
-                .frame(height: 2)
-        }
         .onAppear(perform: prepareDraft)
     }
 
@@ -174,6 +186,109 @@ struct SettingsView: View {
         }
         .frame(minHeight: 46)
     }
+    private var sortByRemainingRow: some View {
+        HStack(spacing: ClipBarTheme.spacingM) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("按剩余额度优先排序", "Sort by remaining quota"))
+                        .font(.body.weight(.medium))
+                    Text(L10n.t("在账号列表中，剩余额度更高的账号排在前面（置顶账号始终优先）。", "Display accounts with higher remaining quota first (pinned accounts remain on top)."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.title2)
+                    .foregroundStyle(ClipBarTheme.accent)
+            }
+
+            Spacer(minLength: ClipBarTheme.spacingM)
+
+            Toggle(
+                L10n.t("按剩余额度优先排序", "Sort by remaining quota"),
+                isOn: Binding(
+                    get: { model.settings.sortByRemainingQuota },
+                    set: { model.setSortByRemainingQuota($0) }
+                )
+            )
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+        }
+        .frame(minHeight: 46)
+    }
+
+    private var notificationsRow: some View {
+        HStack(spacing: ClipBarTheme.spacingM) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("启用额度告警通知", "Enable quota notifications"))
+                        .font(.body.weight(.medium))
+                    Text(L10n.t("后台检测到账号额度过低或耗尽时发送系统横幅通知。", "Send banner alerts when an account is low on quota or completely exhausted."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "bell.badge.fill")
+                    .font(.title2)
+                    .foregroundStyle(ClipBarTheme.accent)
+            }
+
+            Spacer(minLength: ClipBarTheme.spacingM)
+
+            Toggle(
+                L10n.t("启用额度告警通知", "Enable quota notifications"),
+                isOn: Binding(
+                    get: { model.settings.enableNotifications },
+                    set: { model.setEnableNotifications($0) }
+                )
+            )
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
+        }
+        .frame(minHeight: 46)
+    }
+
+    private var lowQuotaAlertRow: some View {
+        HStack(spacing: ClipBarTheme.spacingM) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("低额度提醒阈值", "Low quota threshold"))
+                        .font(.body.weight(.medium))
+                    Text(L10n.t("当任意额度窗口剩余百分比低于该值时触发提醒。", "Trigger alert when any quota window drops below this percentage."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(ClipBarTheme.warning)
+            }
+
+            Spacer(minLength: ClipBarTheme.spacingM)
+
+            Picker(
+                L10n.t("低额度提醒阈值", "Low quota threshold"),
+                selection: Binding(
+                    get: { model.settings.lowQuotaAlertThreshold },
+                    set: { model.setLowQuotaAlertThreshold($0) }
+                )
+            ) {
+                Text("15%").tag(15)
+                Text("10%").tag(10)
+                Text("5%").tag(5)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .controlSize(.small)
+            .frame(width: 154)
+        }
+        .frame(minHeight: 46)
+    }
 
     private var hideEmptyRow: some View {
         HStack(spacing: ClipBarTheme.spacingM) {
@@ -253,9 +368,11 @@ struct SettingsView: View {
 
             Spacer()
 
-            Button(L10n.t("保存并刷新", "Save & Refresh"), action: save)
+            Button(L10n.t("保存", "Save"), action: save)
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
+                .tint(ClipBarTheme.accent)
+                .foregroundStyle(.white)
                 .controlSize(.large)
                 .disabled(!draft.isConfigured)
         }
@@ -350,3 +467,4 @@ struct SettingsView: View {
         model.saveSettings(draft)
     }
 }
+#endif

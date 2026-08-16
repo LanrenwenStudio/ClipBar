@@ -17,16 +17,16 @@ struct ProviderTab: View {
                 Text(provider.displayName)
                 Text("\(accountCount)")
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(isSelected ? brand.opacity(0.82) : Color.secondary.opacity(0.7))
+                    .foregroundStyle(isSelected ? brand.opacity(0.85) : Color.secondary.opacity(0.7))
             }
             .font(.caption.weight(.semibold))
-            .foregroundStyle(isSelected ? brand : .secondary)
+            .foregroundStyle(isSelected ? Color.primary : .secondary)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(isSelected ? brand.opacity(0.16) : Color.clear, in: Capsule())
+            .background(isSelected ? brand.opacity(0.12) : Color.clear, in: Capsule())
             .overlay {
                 Capsule()
-                    .strokeBorder(isSelected ? Color.clear : ClipBarTheme.hairline, lineWidth: 1)
+                    .strokeBorder(isSelected ? brand.opacity(0.35) : ClipBarTheme.hairline, lineWidth: 1)
             }
             .contentShape(Capsule())
         }

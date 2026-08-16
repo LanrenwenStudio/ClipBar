@@ -1,4 +1,6 @@
+#if os(macOS)
 import ServiceManagement
+#endif
 
 enum LaunchAtLoginStatus: Equatable, Sendable {
     case enabled
@@ -19,6 +21,7 @@ enum LaunchAtLoginStatus: Equatable, Sendable {
 @MainActor
 final class LaunchAtLoginService {
     var status: LaunchAtLoginStatus {
+#if os(macOS)
         switch SMAppService.mainApp.status {
         case .enabled:
             .enabled
@@ -31,13 +34,18 @@ final class LaunchAtLoginService {
         @unknown default:
             .notRegistered
         }
+#else
+        .notRegistered
+#endif
     }
 
     func setEnabled(_ enabled: Bool) throws {
+#if os(macOS)
         if enabled {
             try SMAppService.mainApp.register()
         } else {
             try SMAppService.mainApp.unregister()
         }
+#endif
     }
 }

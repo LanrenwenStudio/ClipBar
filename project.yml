@@ -5,6 +5,7 @@ options:
   createIntermediateGroups: true
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
 
 settings:
   base:
@@ -12,7 +13,6 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 
@@ -43,6 +43,7 @@ targets:
         ENABLE_APP_SANDBOX: true
         ENABLE_HARDENED_RUNTIME: true
         COMBINE_HIDPI_IMAGES: true
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
     entitlements:
       path: Sources/ClipBar/ClipBar.entitlements
       properties:
@@ -53,6 +54,82 @@ targets:
       testTargets:
         - ClipBarTests
 
+  ClipBar-iOS:
+    type: application
+    platform: iOS
+    productName: ClipBar
+    sources:
+      - path: Sources/ClipBar
+        excludes:
+          - Info.plist
+          - iOS/Info.plist
+          - Resources/Icons/**
+          - Resources/ClipBarIcon.png
+          - Resources/ClipBarIcon.icns
+      - path: Sources/ClipBar/Resources/Icons
+        type: folder
+        buildPhase: resources
+      - path: Sources/ClipBar/Resources/Assets.xcassets
+        buildPhase: resources
+      - path: Sources/ClipBar/Resources/ClipBarIcon.png
+        type: file
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_NAME: ClipBar
+        PRODUCT_MODULE_NAME: ClipBar
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.ios
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: Sources/ClipBar/iOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/ClipBar/ClipBar-iOS.entitlements
+    entitlements:
+      path: Sources/ClipBar/ClipBar-iOS.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.lanrenwen.clipbar
+    dependencies:
+      - target: ClipBarWidgets
+    scheme:
+      gatherCoverageData: true
+
+  ClipBarWidgets:
+    type: app-extension
+    platform: iOS
+    productName: ClipBarWidgets
+    sources:
+      - path: Sources/ClipBarWidgets
+        excludes:
+          - Info.plist
+      - path: Sources/ClipBar/Models
+      - path: Sources/ClipBar/Settings/AppSettings.swift
+      - path: Sources/ClipBar/UI/ClipBarTheme.swift
+      - path: Sources/ClipBar/UI/ProviderGlyph.swift
+      - path: Sources/ClipBar/UI/ProviderIcon.swift
+      - path: Sources/ClipBar/Resources/Icons
+        type: folder
+        buildPhase: resources
+      - path: Sources/ClipBar/Resources/Assets.xcassets
+        buildPhase: resources
+    dependencies:
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+      - sdk: AppIntents.framework
+    settings:
+      base:
+        PRODUCT_NAME: ClipBarWidgets
+        PRODUCT_MODULE_NAME: ClipBarWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.ios.widgets
+        GENERATE_INFOPLIST_FILE: false
+        INFOPLIST_FILE: Sources/ClipBarWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/ClipBarWidgets/ClipBarWidgets.entitlements
+    entitlements:
+      path: Sources/ClipBarWidgets/ClipBarWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.lanrenwen.clipbar
   ClipBarTests:
     type: bundle.unit-test
     platform: macOS
