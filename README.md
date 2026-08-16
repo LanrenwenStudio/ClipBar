@@ -1,5 +1,7 @@
 # ClipBar
 
+> 官网：[https://clipbar.lanrenwen.com](https://clipbar.lanrenwen.com)
+
 macOS 菜单栏小工具，用来看本机 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 里订阅账号的额度。
 
 这是 demo：只读 Management API，不启动、不修改 CLIProxyAPI。
@@ -55,12 +57,20 @@ open "$(xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=m
 - 不做 OAuth 登录、账号增删
 - 未接 App Store / 官网更新通道
 
-## Homebrew 安装
+## 安装与升级
 
-发布 GitHub Release 后，可以直接通过 Cask 安装：
+### 方式一：Homebrew Cask（推荐）
+
+通过烂人文工作室官方 Tap 仓库一键安装：
 
 ```bash
-brew install --cask https://raw.githubusercontent.com/LanrenwenStudio/ClipBar/main/Casks/clipbar.rb
+brew install --cask LanrenwenStudio/apps/clipbar
+```
+
+后续升级：
+
+```bash
+brew upgrade --cask clipbar
 ```
 
 卸载：
@@ -69,6 +79,10 @@ brew install --cask https://raw.githubusercontent.com/LanrenwenStudio/ClipBar/ma
 brew uninstall --cask clipbar
 ```
 
-给 `v*` tag 创建 Release 时，GitHub Actions 会自动构建通用 macOS 包并上传 `ClipBar.zip`。当前构建使用本机临时签名；正式分发前仍需换成 Apple Developer ID 签名并完成公证。
+### 方式二：GitHub Releases
+
+前往 [GitHub Releases](https://github.com/LanrenwenStudio/ClipBar/releases) 下载最新的 `ClipBar.zip`，解压后拖入 `/Applications` 应用程序文件夹即可。
+
+> 注意：给 `v*` tag 创建 Release 时，GitHub Actions 会自动构建通用 macOS 包并上传 `ClipBar.zip`。当前构建使用本机临时签名；正式分发前仍需换成 Apple Developer ID 签名并完成公证。
 
 Bundle ID：`com.lanrenwen.clipbar`
