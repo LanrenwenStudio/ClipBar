@@ -199,12 +199,14 @@ main() {
   fi
 
   mv -f "$working_package_path" "$package_path"
+  cp -f "$package_path" "$DIST_DIR/ClipBar.dmg"
   checksum="$(shasum -a 256 "$package_path" | awk '{print $1}')"
   zip_checksum="$(shasum -a 256 "$DIST_DIR/$APP_NAME.zip" | awk '{print $1}')"
 
   cat <<EOF
 Created package:
   DMG: $package_path (SHA256: $checksum)
+  DMG (invariant): $DIST_DIR/ClipBar.dmg
   ZIP: $DIST_DIR/$APP_NAME.zip (SHA256: $zip_checksum)
 EOF
 }
