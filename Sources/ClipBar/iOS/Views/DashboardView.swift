@@ -30,7 +30,7 @@ struct DashboardView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         triggerHaptic(.light)
-                        Task { await model.refresh() }
+                        Task { await model.refresh(force: true) }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 15, weight: .semibold))
@@ -51,7 +51,7 @@ struct DashboardView: View {
             }
             .refreshable {
                 triggerHaptic(.medium)
-                await model.refresh()
+                await model.refresh(force: true)
             }
             .sheet(isPresented: $showingSettings) {
                 ServerSettingsView()

@@ -183,7 +183,7 @@ struct QuotaPopoverView: View {
     }
 
     private func refresh() {
-        Task { await model.refresh() }
+        Task { await model.refresh(force: true) }
     }
 }
 

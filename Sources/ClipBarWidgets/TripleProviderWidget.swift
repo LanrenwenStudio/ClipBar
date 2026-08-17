@@ -1,176 +1,294 @@
 import SwiftUI
 import WidgetKit
+#if canImport(UIKit)
+import UIKit
+#endif
 
-struct TripleProviderEntry: TimelineEntry {
+struct MultiProviderEntry: TimelineEntry {
     let date: Date
     let snapshot: ClipBarWidgetSnapshot
 }
 
-struct TripleProviderTimelineProvider: TimelineProvider {
-    typealias Entry = TripleProviderEntry
+// Backward compatibility alias
+typealias TripleProviderEntry = MultiProviderEntry
 
-    func placeholder(in context: Context) -> TripleProviderEntry {
-        TripleProviderEntry(date: Date(), snapshot: .preview)
+struct MultiProviderTimelineProvider: TimelineProvider {
+    typealias Entry = MultiProviderEntry
+
+    func placeholder(in context: Context) -> MultiProviderEntry {
+        MultiProviderEntry(date: Date(), snapshot: .preview)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (TripleProviderEntry) -> Void) {
+    func getSnapshot(in context: Context, completion: @escaping (MultiProviderEntry) -> Void) {
         let snapshot = WidgetDataStore.shared.loadSnapshot()
-        completion(TripleProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot))
+        completion(MultiProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot))
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<TripleProviderEntry>) -> Void) {
+    func getTimeline(in context: Context, completion: @escaping (Timeline<MultiProviderEntry>) -> Void) {
         let snapshot = WidgetDataStore.shared.loadSnapshot()
-        let entry = TripleProviderEntry(date: Date(), snapshot: snapshot)
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+        let entry = MultiProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot)
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
+        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 }
 
-struct TripleProviderWidgetView: View {
-    let entry: TripleProviderEntry
+typealias TripleProviderTimelineProvider = MultiProviderTimelineProvider
+
+struct MultiProviderWidgetView: View {
+    let entry: MultiProviderEntry
+    let maxCount: Int
 
     private var displayProviders: [ProviderWidgetData] {
-        let list = entry.snapshot.topThreeProviders.isEmpty ? entry.snapshot.providers : entry.snapshot.topThreeProviders
-        return Array(list.prefix(3))
+        let list = entry.snapshot.providers
+        if list.isEmpty {
+            return Array(entry.snapshot.topThreeProviders.prefix(maxCount))
+        }
+        return Array(list.prefix(maxCount))
+    }
+
+    private var count: Int {
+        max(1, displayProviders.count)
+    }
+
+    private var isChinese: Bool {
+        Locale.preferredLanguages.first?.hasPrefix("zh") == true
+    }
+
+    private var freshnessText: String {
+        let elapsed = max(0, entry.date.timeIntervalSince(entry.snapshot.lastUpdated))
+        if elapsed < 60 {
+            return isChinese ? "刚刚" : "Just now"
+        }
+        if elapsed < 3_600 {
+            let minutes = max(1, Int(elapsed / 60))
+            return isChinese ? "\(minutes)分钟前" : "\(minutes)m ago"
+        }
+        if elapsed < 86_400 {
+            let hours = max(1, Int(elapsed / 3_600))
+            return isChinese ? "\(hours)小时前" : "\(hours)h ago"
+        }
+        return isChinese ? "较早" : "Earlier"
+    }
+
+    private var statusDotColor: Color {
+        let snapshot = entry.snapshot
+        // 拿不到数据 / 未配置 / 无账号 -> 红色；正常拿到数据 -> 绿色
+        if !snapshot.isConfigured || snapshot.providers.isEmpty || snapshot.totalAccounts == 0 {
+            return Color.red
+        }
+        return Color.green
+    }
+
+    private var glyphSize: CGFloat {
+        switch count {
+        case 5: return 12
+        case 4: return 13
+        case 3: return 13.5
+        default: return 15
+        }
+    }
+
+    private var nameFontSize: CGFloat {
+        switch count {
+        case 5: return 9.5
+        case 4: return 10.5
+        case 3: return 11.5
+        default: return 12.5
+        }
+    }
+
+    private var percentFontSize: CGFloat {
+        switch count {
+        case 5: return 11
+        case 4: return 12
+        case 3: return 13.5
+        default: return 14.5
+        }
+    }
+
+    private var barHeight: CGFloat {
+        switch count {
+        case 5: return 3.5
+        case 4: return 4
+        case 3: return 4.5
+        default: return 5.5
+        }
+    }
+
+    private var rowInnerSpacing: CGFloat {
+        switch count {
+        case 5: return 2.5
+        case 4: return 3
+        case 3: return 3.5
+        default: return 4
+        }
     }
 
     var body: some View {
         if !entry.snapshot.isConfigured || entry.snapshot.providers.isEmpty {
             unconfiguredView
         } else {
-            tripleCard
+            multiProviderCard
         }
     }
 
-    private var tripleCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Header: Minimal Icon on left, Overall percentage pill on right
-            HStack {
-                Image(systemName: "chart.bar.xaxis")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(ClipBarTheme.accent)
+    private var multiProviderCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Top Bar: ["11/11" (Left)] <--------> [🟢 Freshness "刚刚" (Right)]
+            HStack(alignment: .center, spacing: 4) {
+                Text("\(entry.snapshot.healthyAccounts)/\(entry.snapshot.totalAccounts)")
+                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(Color.secondary)
 
                 Spacer(minLength: 4)
 
-                if let overall = entry.snapshot.overallRemaining {
-                    Text("\(Int(overall.rounded()))%")
-                        .font(.system(size: 10.5, weight: .heavy, design: .rounded))
-                        .foregroundStyle(overallColor(overall))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(overallColor(overall).opacity(0.12), in: Capsule())
+                HStack(spacing: 3.5) {
+                    Circle()
+                        .fill(statusDotColor)
+                        .frame(width: 5, height: 5)
+
+                    Text(freshnessText)
+                        .font(.system(size: 9.5, weight: .medium, design: .rounded))
+                        .foregroundStyle(Color.secondary)
                 }
             }
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
 
-            Divider()
-                .opacity(0.5)
-
-            // 3 Provider Rows
-            VStack(spacing: 6) {
-                ForEach(displayProviders) { p in
-                    providerRow(p)
-                }
-
-                // Fill placeholders if fewer than 3 providers
-                if displayProviders.count < 3 {
-                    ForEach(displayProviders.count..<3, id: \.self) { _ in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color.primary.opacity(0.06))
-                                .frame(width: 15, height: 15)
-
-                            Capsule()
-                                .fill(Color.primary.opacity(0.06))
-                                .frame(height: 5.5)
-
-                            Text("--")
-                                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                                .foregroundStyle(.tertiary)
-                                .frame(width: 34, alignment: .trailing)
-                        }
-                        .frame(height: 19)
-                    }
-                }
-            }
-
+            // Top Spacer before rows
             Spacer(minLength: 0)
 
-            // Footer
-            HStack(spacing: 4) {
-                HStack(spacing: 3) {
-                    Circle()
-                        .fill(entry.snapshot.healthyAccounts > 0 ? ClipBarTheme.success : ClipBarTheme.warning)
-                        .frame(width: 4.5, height: 4.5)
-                    Text("\(entry.snapshot.healthyAccounts)/\(entry.snapshot.totalAccounts) 正常")
-                        .font(.system(size: 8.5, weight: .medium))
-                        .foregroundStyle(.secondary)
+            // Main Provider Rows (Pure Icon + Progress Bar + Percentage)
+            if displayProviders.isEmpty {
+                placeholderRow
+            } else {
+                ForEach(Array(displayProviders.enumerated()), id: \.element.id) { index, p in
+                    if index > 0 {
+                        Spacer(minLength: 0)
+                    }
+                    providerRow(p)
                 }
-
-                Spacer()
-
-                Text(entry.snapshot.lastUpdated, style: .time)
-                    .font(.system(size: 8.5, design: .monospaced))
-                    .foregroundStyle(.tertiary)
             }
+
+            // Bottom Spacer
+            Spacer(minLength: 0)
         }
-        .padding(11)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 11)
+    }
+
+    private func quotaColor(for percent: Double) -> Color {
+        let threshold = Double(entry.snapshot.lowQuotaThreshold)
+        if percent <= 0.5 {
+            return Color(uiColor: .systemRed)
+        }
+        if percent <= threshold {
+            return Color(uiColor: .systemOrange)
+        }
+        return Color.primary
     }
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
-        let provider = p.provider
-        let color = ClipBarTheme.progressColor(for: provider, remaining: p.remainingPercent)
-        let percent = p.remainingPercent ?? 0
+        let percent = min(100, max(0, p.remainingPercent ?? 0))
+        let isExhausted = percent <= 0.5
+        let rowColor = quotaColor(for: percent)
+        let reset = p.nearestResetText
 
-        return HStack(spacing: 6) {
-            ProviderGlyph(provider: provider, size: 15)
+        let trailingText: String = {
+            if isExhausted, let reset, !reset.isEmpty {
+                return reset
+            }
+            return "\(Int(percent.rounded()))%"
+        }()
 
-            // Wide progress capsule bar
+        let isShowingReset = isExhausted && reset != nil && !(reset?.isEmpty ?? true)
+        let fontSz: CGFloat = isShowingReset ? max(10, percentFontSize - 1) : percentFontSize
+
+        return VStack(alignment: .leading, spacing: rowInnerSpacing) {
+            // Header Line: [Icon] [Provider Name] <---- Spacer ----> [Percentage or Reset Time]
+            HStack(alignment: .center, spacing: 5) {
+                ProviderGlyph(provider: p.provider, size: glyphSize)
+                    .frame(width: glyphSize, height: glyphSize)
+
+                Text(p.displayName)
+                    .font(.system(size: nameFontSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+
+                Spacer(minLength: 4)
+
+                Text(trailingText)
+                    .font(.system(size: fontSz, weight: .heavy, design: .rounded))
+                    .foregroundStyle(rowColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+
+            // Full-Width Sleek Progress Bar (Matching SingleProvider style)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.primary.opacity(0.08))
-                        .frame(height: 5.5)
+                        .frame(height: barHeight)
 
                     Capsule()
-                        .fill(color)
-                        .frame(width: max(4, geo.size.width * CGFloat(min(100, max(0, percent)) / 100.0)), height: 5.5)
+                        .fill(rowColor)
+                        .frame(
+                            width: isExhausted ? 0 : max(barHeight, geo.size.width * CGFloat(percent / 100.0)),
+                            height: barHeight
+                        )
                 }
             }
-            .frame(height: 5.5)
-
-            Text(ClipBarTheme.percentText(p.remainingPercent))
-                .font(.system(size: 10.5, weight: .bold, design: .monospaced))
-                .foregroundStyle(color)
-                .frame(width: 34, alignment: .trailing)
+            .frame(height: barHeight)
         }
-        .frame(height: 19)
     }
 
-    private func overallColor(_ value: Double) -> Color {
-        if value <= 0.5 { return ClipBarTheme.danger }
-        if value <= 15 { return ClipBarTheme.warning }
-        return ClipBarTheme.success
+    private var placeholderRow: some View {
+        VStack(alignment: .leading, spacing: rowInnerSpacing) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(width: glyphSize, height: glyphSize)
+
+                Text("--")
+                    .font(.system(size: nameFontSize, weight: .bold, design: .rounded))
+                    .foregroundStyle(Color.secondary)
+
+                Spacer()
+
+                Text("--%")
+                    .font(.system(size: percentFontSize, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.secondary)
+            }
+
+            Capsule()
+                .fill(Color.primary.opacity(0.06))
+                .frame(height: barHeight)
+        }
     }
 
     private var unconfiguredView: some View {
         VStack(spacing: 6) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 22))
-                .foregroundStyle(ClipBarTheme.accent)
+                .font(.system(size: 20))
+                .foregroundStyle(Color.primary)
 
             Text("暂无数据")
-                .font(.system(size: 12, weight: .bold))
+                .font(.system(size: 12, weight: .bold, design: .rounded))
 
             Text("请在 App 中刷新连接")
                 .font(.system(size: 9.5))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.secondary)
                 .multilineTextAlignment(.center)
         }
         .padding(10)
     }
 }
 
+// Backward compatibility
+typealias TripleProviderWidgetView = MultiProviderWidgetView
+
+// 1. 三渠道小组件
 struct TripleProviderWidget: Widget {
     static let kind: String = "TripleProviderWidget"
 
@@ -179,13 +297,38 @@ struct TripleProviderWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(
             kind: Self.kind,
-            provider: TripleProviderTimelineProvider()
+            provider: MultiProviderTimelineProvider()
         ) { entry in
-            TripleProviderWidgetView(entry: entry)
+            MultiProviderWidgetView(entry: entry, maxCount: 3)
                 .containerBackground(Color(uiColor: .systemBackground), for: .widget)
         }
         .configurationDisplayName("三渠道概览")
-        .description("展示前三个主力 AI 渠道的额度与状态。")
+        .description("展示主力 3 个 AI 渠道的额度与健康状态。")
         .supportedFamilies([.systemSmall])
+        .contentMarginsDisabled()
     }
+}
+
+#Preview("3渠道") {
+    MultiProviderWidgetView(
+        entry: MultiProviderEntry(date: Date(), snapshot: .preview),
+        maxCount: 3
+    )
+    .frame(width: 155, height: 155)
+}
+
+#Preview("4渠道") {
+    MultiProviderWidgetView(
+        entry: MultiProviderEntry(date: Date(), snapshot: .preview),
+        maxCount: 4
+    )
+    .frame(width: 155, height: 155)
+}
+
+#Preview("5渠道") {
+    MultiProviderWidgetView(
+        entry: MultiProviderEntry(date: Date(), snapshot: .preview),
+        maxCount: 5
+    )
+    .frame(width: 155, height: 155)
 }

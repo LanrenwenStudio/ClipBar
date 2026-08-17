@@ -15,6 +15,8 @@ struct SettingsStore {
         static let enableNotifications = "clipbar.enableNotifications"
         static let sortByRemainingQuota = "clipbar.sortByRemainingQuota"
         static let appTheme = "clipbar.appTheme"
+        static let cachedAccounts = "clipbar.cachedAccounts"
+        static let lastRefreshedAt = "clipbar.lastRefreshedAt"
     }
 
     private let defaults: UserDefaults
@@ -77,6 +79,22 @@ struct SettingsStore {
         defaults.set(settings.enableNotifications, forKey: Key.enableNotifications)
         defaults.set(settings.sortByRemainingQuota, forKey: Key.sortByRemainingQuota)
         defaults.set(settings.appTheme.rawValue, forKey: Key.appTheme)
+    }
+
+    func loadCachedAccounts() -> (accounts: [AccountQuota], lastRefreshedAt: Date?) {
+        guard let data = defaults.data(forKey: Key.cachedAccounts),
+              let accounts = try? JSONDecoder().decode([AccountQuota].self, from: data) else {
+            return ([], nil)
+        }
+        let date = defaults.object(forKey: Key.lastRefreshedAt) as? Date
+        return (accounts, date)
+    }
+
+    func saveCachedAccounts(_ accounts: [AccountQuota], at date: Date) {
+        if let data = try? JSONEncoder().encode(accounts) {
+            defaults.set(data, forKey: Key.cachedAccounts)
+            defaults.set(date, forKey: Key.lastRefreshedAt)
+        }
     }
 
     private func migrateLegacyKeysIfNeeded() {

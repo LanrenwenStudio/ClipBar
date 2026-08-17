@@ -65,8 +65,15 @@ final class WidgetDataStore: @unchecked Sendable {
                 settings: settings
             )
             let healthyCount = pAccounts.filter { row in
-                guard let rem = row.snapshot.windows.compactMap(\.remainingPercent).first else { return true }
-                return rem > Double(settings.lowQuotaAlertThreshold)
+                let isLocallyDisabled = settings.isAccountDisabled(statusKey: row.account.statusKey, serverDisabled: row.account.disabled)
+                guard !isLocallyDisabled, !row.account.disabled, !row.account.unavailable, row.snapshot.error == nil else { return false }
+                if let lowest = row.snapshot.lowestRemaining {
+                    return lowest > 0.5
+                }
+                if let rem = row.snapshot.windows.compactMap(\.remainingPercent).first {
+                    return rem > 0.5
+                }
+                return true
             }.count
 
             let statusText: String
@@ -84,22 +91,33 @@ final class WidgetDataStore: @unchecked Sendable {
 
             var windows: [QuotaWindowSummary] = []
             let allWindows = pAccounts.flatMap(\.snapshot.windows)
-            // Group windows by label
-            var seenLabels = Set<String>()
+            var labelGroups: [String: [QuotaWindow]] = [:]
+            var orderedLabels: [String] = []
             for win in allWindows {
                 let shortLabel = win.label
                     .replacingOccurrences(of: " (Rate Limit)", with: "")
                     .replacingOccurrences(of: " (Weekly)", with: "")
-                if !seenLabels.contains(shortLabel) {
-                    seenLabels.insert(shortLabel)
-                    windows.append(QuotaWindowSummary(
-                        label: shortLabel,
-                        remainingPercent: win.remainingPercent,
-                        resetText: win.resetText
-                    ))
+                if labelGroups[shortLabel] == nil {
+                    labelGroups[shortLabel] = []
+                    orderedLabels.append(shortLabel)
                 }
+                labelGroups[shortLabel]?.append(win)
             }
 
+            for label in orderedLabels {
+                guard let group = labelGroups[label], !group.isEmpty else { continue }
+                let validRemainings = group.compactMap(\.remainingPercent)
+                let avgPercent = validRemainings.isEmpty ? nil : (validRemainings.reduce(0, +) / Double(validRemainings.count))
+                // Pick the earliest / nearest reset text among all accounts
+                let earliestReset = group.compactMap(\.resetText).min { lhs, rhs in
+                    parseResetDuration(lhs) < parseResetDuration(rhs)
+                }
+                windows.append(QuotaWindowSummary(
+                    label: label,
+                    remainingPercent: avgPercent,
+                    resetText: earliestReset
+                ))
+            }
             providerDataList.append(ProviderWidgetData(
                 providerRawValue: provider.rawValue,
                 displayName: provider.displayName,
@@ -118,8 +136,15 @@ final class WidgetDataStore: @unchecked Sendable {
         )
 
         let totalHealthy = accounts.filter { row in
-            guard let rem = row.snapshot.windows.compactMap(\.remainingPercent).first else { return true }
-            return rem > Double(settings.lowQuotaAlertThreshold)
+            let isLocallyDisabled = settings.isAccountDisabled(statusKey: row.account.statusKey, serverDisabled: row.account.disabled)
+            guard !isLocallyDisabled, !row.account.disabled, !row.account.unavailable, row.snapshot.error == nil else { return false }
+            if let lowest = row.snapshot.lowestRemaining {
+                return lowest > 0.5
+            }
+            if let rem = row.snapshot.windows.compactMap(\.remainingPercent).first {
+                return rem > 0.5
+            }
+            return true
         }.count
 
         let connectionStr: String
@@ -138,9 +163,9 @@ final class WidgetDataStore: @unchecked Sendable {
             topThreeProviders: Array(providerDataList.prefix(3)),
             overallRemaining: overallRemaining,
             totalAccounts: accounts.count,
-            healthyAccounts: totalHealthy
+            healthyAccounts: totalHealthy,
+            lowQuotaThreshold: settings.lowQuotaAlertThreshold
         )
-
         saveSnapshot(snapshot)
     }
 }

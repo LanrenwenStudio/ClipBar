@@ -31,7 +31,16 @@ final class AppModel {
         self.store = store
         let loadedSettings = store.load()
         self.settings = loadedSettings
-        self.connection = loadedSettings.isConfigured ? .idle : .unconfigured
+        let (cachedAccounts, cachedDate) = store.loadCachedAccounts()
+        self.accounts = cachedAccounts
+        self.lastRefreshedAt = cachedDate
+        if !cachedAccounts.isEmpty {
+            self.connection = .online
+            self.selectedProvider = cachedAccounts.first?.account.provider
+            WidgetDataStore.shared.syncFrom(accounts: cachedAccounts, settings: loadedSettings, connection: .online)
+        } else {
+            self.connection = loadedSettings.isConfigured ? .idle : .unconfigured
+        }
         self.launchAtLoginStatus = launchAtLoginService.status
         self.launchAtLoginError = nil
         start()
@@ -283,17 +292,29 @@ final class AppModel {
         settings.baseURL = next.normalizedBaseURL
         settings.managementKey = next.normalizedManagementKey
         settings.refreshSeconds = next.clampedRefreshSeconds
+        settings.statusQuotaWindow = next.statusQuotaWindow
+        settings.lowQuotaAlertThreshold = next.lowQuotaAlertThreshold
+        settings.enableNotifications = next.enableNotifications
+        settings.sortByRemainingQuota = next.sortByRemainingQuota
+        settings.appTheme = next.appTheme
         persistPreferences()
         popoverDismissalRequest += 1
         restartPolling()
+        Task { await refresh(force: true) }
     }
 
-    func refresh() async {
+    func refresh(force: Bool = false) async {
         guard settings.isConfigured else {
             connection = .unconfigured
             accounts = []
             WidgetDataStore.shared.syncFrom(accounts: [], settings: settings, connection: .unconfigured)
             return
+        }
+        if !force, let last = lastRefreshedAt, !accounts.isEmpty {
+            let elapsed = Date().timeIntervalSince(last)
+            if elapsed < TimeInterval(settings.clampedRefreshSeconds) {
+                return
+            }
         }
         refreshTask?.cancel()
         let settings = settings
@@ -302,7 +323,9 @@ final class AppModel {
             do {
                 let rows = try await QuotaService(client: ManagementClient(settings: settings)).refresh()
                 accounts = rows
-                lastRefreshedAt = Date()
+                let now = Date()
+                lastRefreshedAt = now
+                store.saveCachedAccounts(rows, at: now)
                 connection = .online
                 if selectedProvider == nil {
                     selectedProvider = rows.first?.account.provider
@@ -326,7 +349,22 @@ final class AppModel {
 
     private func start() {
         restartPolling()
-        Task { await refresh() }
+        if let last = lastRefreshedAt, !accounts.isEmpty {
+            let elapsed = Date().timeIntervalSince(last)
+            let refreshInterval = TimeInterval(settings.clampedRefreshSeconds)
+            if elapsed >= refreshInterval {
+                Task { await refresh(force: true) }
+            } else {
+                let remaining = max(1, refreshInterval - elapsed)
+                Task {
+                    try? await Task.sleep(for: .seconds(remaining))
+                    guard !Task.isCancelled else { return }
+                    await refresh(force: true)
+                }
+            }
+        } else {
+            Task { await refresh(force: true) }
+        }
     }
 
     private func restartPolling() {
@@ -334,8 +372,14 @@ final class AppModel {
         let seconds = settings.clampedRefreshSeconds
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(seconds))
-                await self?.refresh()
+                do {
+                    try await Task.sleep(for: .seconds(seconds))
+                } catch is CancellationError {
+                    return
+                } catch {
+                    return
+                }
+                await self?.refresh(force: true)
             }
         }
     }

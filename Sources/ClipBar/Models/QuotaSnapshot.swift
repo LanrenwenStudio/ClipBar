@@ -1,6 +1,6 @@
 import Foundation
 
-enum QuotaProvider: String, CaseIterable, Identifiable, Sendable {
+enum QuotaProvider: String, CaseIterable, Identifiable, Sendable, Codable {
     var id: String { rawValue }
     case codex
     case claude
@@ -63,7 +63,7 @@ enum QuotaProvider: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct QuotaWindow: Identifiable, Hashable, Sendable {
+struct QuotaWindow: Identifiable, Hashable, Sendable, Codable {
     var id: String
     var label: String
     var remainingPercent: Double?
@@ -82,7 +82,7 @@ struct QuotaWindow: Identifiable, Hashable, Sendable {
     }
 }
 
-struct QuotaSnapshot: Hashable, Sendable {
+struct QuotaSnapshot: Hashable, Sendable, Codable {
     var planType: String?
     var windows: [QuotaWindow]
     var error: String?
@@ -100,7 +100,7 @@ struct QuotaSnapshot: Hashable, Sendable {
     }
 }
 
-struct AuthAccount: Identifiable, Hashable, Sendable {
+struct AuthAccount: Identifiable, Hashable, Sendable, Codable {
     var id: String
     var authIndex: String
     var name: String
@@ -132,7 +132,7 @@ struct AuthAccount: Identifiable, Hashable, Sendable {
     }
 }
 
-struct AccountQuota: Identifiable, Hashable, Sendable {
+struct AccountQuota: Identifiable, Hashable, Sendable, Codable {
     var account: AuthAccount
     var snapshot: QuotaSnapshot
 

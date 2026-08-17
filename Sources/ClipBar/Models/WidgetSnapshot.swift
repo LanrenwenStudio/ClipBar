@@ -40,10 +40,42 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
         self.statusText = statusText
         self.windows = windows
     }
-
     var provider: QuotaProvider {
         QuotaProvider(rawValue: providerRawValue) ?? .unknown
     }
+
+    var nearestResetText: String? {
+        let candidates = windows.compactMap(\.resetText).filter { !$0.isEmpty && $0 != "--" }
+        return candidates.min { lhs, rhs in
+            parseResetDuration(lhs) < parseResetDuration(rhs)
+        }
+    }
+}
+
+func parseResetDuration(_ text: String?) -> Double {
+    guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !text.isEmpty else {
+        return .infinity
+    }
+    var total: Double = 0
+    var matched = false
+    let parts = text.split(separator: " ")
+    for part in parts {
+        let str = String(part)
+        if str.hasSuffix("d"), let v = Double(str.dropLast()) {
+            total += v * 86400
+            matched = true
+        } else if str.hasSuffix("h"), let v = Double(str.dropLast()) {
+            total += v * 3600
+            matched = true
+        } else if str.hasSuffix("m"), let v = Double(str.dropLast()) {
+            total += v * 60
+            matched = true
+        } else if str.hasSuffix("s"), let v = Double(str.dropLast()) {
+            total += v
+            matched = true
+        }
+    }
+    return matched ? total : .infinity
 }
 
 struct ClipBarWidgetSnapshot: Codable, Sendable {
@@ -55,6 +87,11 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
     let overallRemaining: Double?
     let totalAccounts: Int
     let healthyAccounts: Int
+    let lowQuotaThreshold: Int
+
+    enum CodingKeys: String, CodingKey {
+        case lastUpdated, isConfigured, connectionStatus, providers, topThreeProviders, overallRemaining, totalAccounts, healthyAccounts, lowQuotaThreshold
+    }
 
     init(
         lastUpdated: Date,
@@ -64,7 +101,8 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
         topThreeProviders: [ProviderWidgetData],
         overallRemaining: Double?,
         totalAccounts: Int,
-        healthyAccounts: Int
+        healthyAccounts: Int,
+        lowQuotaThreshold: Int = 15
     ) {
         self.lastUpdated = lastUpdated
         self.isConfigured = isConfigured
@@ -74,8 +112,21 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
         self.overallRemaining = overallRemaining
         self.totalAccounts = totalAccounts
         self.healthyAccounts = healthyAccounts
+        self.lowQuotaThreshold = lowQuotaThreshold
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        lastUpdated = try container.decode(Date.self, forKey: .lastUpdated)
+        isConfigured = try container.decode(Bool.self, forKey: .isConfigured)
+        connectionStatus = try container.decode(String.self, forKey: .connectionStatus)
+        providers = try container.decode([ProviderWidgetData].self, forKey: .providers)
+        topThreeProviders = try container.decode([ProviderWidgetData].self, forKey: .topThreeProviders)
+        overallRemaining = try container.decodeIfPresent(Double.self, forKey: .overallRemaining)
+        totalAccounts = try container.decode(Int.self, forKey: .totalAccounts)
+        healthyAccounts = try container.decode(Int.self, forKey: .healthyAccounts)
+        lowQuotaThreshold = try container.decodeIfPresent(Int.self, forKey: .lowQuotaThreshold) ?? 15
+    }
     static var preview: ClipBarWidgetSnapshot {
         let claude = ProviderWidgetData(
             providerRawValue: "claude",

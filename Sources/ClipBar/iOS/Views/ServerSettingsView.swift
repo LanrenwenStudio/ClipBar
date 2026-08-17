@@ -22,7 +22,6 @@ struct ServerSettingsView: View {
                 diagnosisSection
                 behaviorSection
                 aboutSection
-                saveButtonSection
             }
             .navigationTitle(L10n.t("服务设置", "Server Settings"))
             .navigationBarTitleDisplayMode(.inline)
@@ -238,34 +237,6 @@ struct ServerSettingsView: View {
             }
         } header: {
             Text(L10n.t("关于", "About"))
-        }
-    }
-
-    private var saveButtonSection: some View {
-        Section {
-            Button {
-                save()
-                dismiss()
-            } label: {
-                HStack {
-                    Spacer()
-                    Image(systemName: "checkmark.circle.fill")
-                    Text(L10n.t("保存配置", "Save Configuration"))
-                        .fontWeight(.semibold)
-                    Spacer()
-                }
-                .foregroundStyle(.white)
-                .padding(.vertical, 12)
-                .background(
-                    draft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        ? Color.secondary.opacity(0.4)
-                        : ClipBarTheme.accent,
-                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
-                )
-            }
-            .disabled(draft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-            .listRowBackground(Color.clear)
         }
     }
 
