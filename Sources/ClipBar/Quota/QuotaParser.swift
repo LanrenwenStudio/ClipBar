@@ -230,6 +230,10 @@ enum QuotaParser {
             ?? []
         for product in products {
             let name = JSONValue.firstString(product, paths: ["product"]) ?? "Grok"
+            // GrokBuild uses the same quota as the weekly window; avoid showing it twice.
+            guard name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "grokbuild" else {
+                continue
+            }
             guard let used = JSONValue.firstDouble(product, paths: ["usagePercent", "usage_percent"]) else {
                 continue
             }
