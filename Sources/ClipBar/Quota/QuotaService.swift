@@ -193,6 +193,9 @@ struct QuotaService: Sendable {
             snapshot = weeklySnapshot
         } else if let monthlySnapshot {
             snapshot = monthlySnapshot
+        } else if (200..<300).contains(weekly.statusCode) || (200..<300).contains(monthly.statusCode) {
+            let object = JSONValue.object(from: weekly.body) ?? JSONValue.object(from: monthly.body) ?? [:]
+            snapshot = QuotaParser.parseXai(object)
         } else {
             let failed = [weekly, monthly].first { !(200..<300).contains($0.statusCode) } ?? weekly
             throw ManagementClientError.httpStatus(failed.statusCode, failed.body)

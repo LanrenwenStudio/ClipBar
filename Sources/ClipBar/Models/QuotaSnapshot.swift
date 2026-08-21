@@ -63,6 +63,20 @@ enum QuotaProvider: String, CaseIterable, Identifiable, Sendable, Codable {
     }
 }
 
+enum QuotaDisplayScale {
+    static let exhausted = 0.5
+    static let step = 5.0
+    static let warningCeiling = 30.0
+
+    static func isExhausted(_ remaining: Double?) -> Bool {
+        (remaining ?? 100) <= exhausted
+    }
+
+    static func isLow(_ remaining: Double?) -> Bool {
+        (remaining ?? 100) <= warningCeiling
+    }
+}
+
 struct QuotaWindow: Identifiable, Hashable, Sendable, Codable {
     var id: String
     var label: String
@@ -74,11 +88,11 @@ struct QuotaWindow: Identifiable, Hashable, Sendable, Codable {
     }
 
     var isExhausted: Bool {
-        (remainingPercent ?? 100) <= 0.5
+        QuotaDisplayScale.isExhausted(remainingPercent)
     }
 
     var isLow: Bool {
-        (remainingPercent ?? 100) <= 20
+        QuotaDisplayScale.isLow(remainingPercent)
     }
 }
 

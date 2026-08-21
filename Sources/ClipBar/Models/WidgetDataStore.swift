@@ -78,9 +78,9 @@ final class WidgetDataStore: @unchecked Sendable {
 
             let statusText: String
             if let avg = avgRemaining {
-                if avg <= 0.5 {
+                if QuotaDisplayScale.isExhausted(avg) {
                     statusText = "已耗尽"
-                } else if avg <= Double(settings.lowQuotaAlertThreshold) {
+                } else if QuotaDisplayScale.isLow(avg) {
                     statusText = "低额度"
                 } else {
                     statusText = "正常"
@@ -163,8 +163,7 @@ final class WidgetDataStore: @unchecked Sendable {
             topThreeProviders: Array(providerDataList.prefix(3)),
             overallRemaining: overallRemaining,
             totalAccounts: accounts.count,
-            healthyAccounts: totalHealthy,
-            lowQuotaThreshold: settings.lowQuotaAlertThreshold
+            healthyAccounts: totalHealthy
         )
         saveSnapshot(snapshot)
     }

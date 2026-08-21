@@ -10,9 +10,9 @@ struct SettingsField<Content: View>: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ClipBarTheme.spacingXS) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.caption.weight(.semibold))
+                .font(.system(size: 10.5, weight: .medium))
                 .foregroundStyle(.secondary)
             content
         }

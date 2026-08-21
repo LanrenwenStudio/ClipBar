@@ -27,7 +27,7 @@ struct QuotaParserTests {
         #expect(snapshot.windows[0].remainingPercent == 75)
         #expect(snapshot.windows[0].resetText == "1h 0m")
         #expect(snapshot.windows[1].id == "7d")
-        #expect(snapshot.windows[1].label == "7d")
+        #expect(snapshot.windows[1].label == "周额度" || snapshot.windows[1].label == "Week")
         #expect(snapshot.windows[1].remainingPercent == 90)
     }
 
@@ -184,6 +184,61 @@ struct QuotaParserTests {
         #expect(merged.planType == "SuperGrok")
         #expect(monthly.windows.contains { $0.id == "month" && $0.remainingPercent == 80 })
         #expect(merged.windows.map(\.id) == ["week", "product-grok-4", "month"])
+    }
+
+    @Test("xAI omitted used percent after reset is full remaining")
+    func parseXaiResetOmitsUsedPercent() {
+        let weekly = QuotaParser.parseXai([
+            "config": [
+                "currentPeriod": [
+                    "type": "USAGE_PERIOD_TYPE_WEEKLY",
+                    "start": "2026-08-18T18:14:30.145601+00:00",
+                    "end": "2026-08-25T18:14:30.145601+00:00"
+                ],
+                "onDemandCap": ["val": 0],
+                "onDemandUsed": ["val": 0]
+            ]
+        ])
+        let explicitZero = QuotaParser.parseXai([
+            "config": [
+                "creditUsagePercent": 0,
+                "currentPeriod": [
+                    "type": "USAGE_PERIOD_TYPE_WEEKLY",
+                    "end": "2099-01-08T00:00:00Z"
+                ]
+            ]
+        ])
+        let onePercentUsed = QuotaParser.parseXai([
+            "config": [
+                "creditUsagePercent": 1.0,
+                "currentPeriod": [
+                    "type": "USAGE_PERIOD_TYPE_WEEKLY",
+                    "end": "2099-01-08T00:00:00Z"
+                ],
+                "productUsage": [
+                    ["product": "GrokBuild", "usagePercent": 1.0]
+                ]
+            ]
+        ])
+
+        #expect(weekly.windows.contains { $0.id == "week" && $0.remainingPercent == 100 })
+        #expect(weekly.error == nil)
+        #expect(explicitZero.windows.contains { $0.id == "week" && $0.remainingPercent == 100 })
+        #expect(onePercentUsed.windows.contains { $0.id == "week" && $0.remainingPercent == 99 })
+        #expect(!onePercentUsed.windows.contains { $0.id == "product-GrokBuild" })
+    }
+
+    @Test("xAI monthly payload without currentPeriod does not invent a week window")
+    func parseXaiMonthlyDoesNotInventWeek() {
+        let monthly = QuotaParser.parseXai([
+            "config": [
+                "monthlyLimit": ["val": 0],
+                "used": ["val": 16],
+                "billingPeriodEnd": "2026-09-01T00:00:00+00:00"
+            ]
+        ])
+        #expect(!monthly.windows.contains { $0.id == "week" })
+        #expect(monthly.windows.isEmpty)
     }
 
     @Test("Kimi coding usage maps weekly and rate-limit windows")

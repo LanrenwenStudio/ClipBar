@@ -6,15 +6,19 @@ struct ClipBarFieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .textFieldStyle(.plain)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(ClipBarTheme.inputBackground, in: RoundedRectangle(cornerRadius: ClipBarTheme.controlRadius))
-            .overlay {
-                RoundedRectangle(cornerRadius: ClipBarTheme.controlRadius)
+            .font(.system(size: 11.5))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 7)
                     .strokeBorder(
-                        isFocused ? ClipBarTheme.accent : ClipBarTheme.hairline,
-                        lineWidth: isFocused ? 1.5 : 1
+                        isFocused ? Color.blue.opacity(0.45) : Color.primary.opacity(0.07),
+                        lineWidth: isFocused ? 1 : 0.5
                     )
-            }
+            )
     }
 }

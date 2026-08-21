@@ -56,26 +56,122 @@ func parseResetDuration(_ text: String?) -> Double {
     guard let text = text?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), !text.isEmpty else {
         return .infinity
     }
+    let iso = ISO8601DateFormatter()
+    iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    if let date = iso.date(from: text) ?? ISO8601DateFormatter().date(from: text) {
+        let diff = date.timeIntervalSinceNow
+        return diff > 0 ? diff : 0
+    }
+
     var total: Double = 0
     var matched = false
     let parts = text.split(separator: " ")
     for part in parts {
         let str = String(part)
-        if str.hasSuffix("d"), let v = Double(str.dropLast()) {
+        if str.contains(":") {
+            let timeComponents = str.split(separator: ":")
+            if timeComponents.count == 2, let h = Double(timeComponents[0]), let m = Double(timeComponents[1]) {
+                total += h * 3600 + m * 60
+                matched = true
+            }
+        } else if str.hasSuffix("d") || str.hasSuffix("天"), let v = Double(str.dropLast()) {
             total += v * 86400
             matched = true
-        } else if str.hasSuffix("h"), let v = Double(str.dropLast()) {
+        } else if str.hasSuffix("h") || str.hasSuffix("小时"), let v = Double(str.dropLast()) {
             total += v * 3600
             matched = true
-        } else if str.hasSuffix("m"), let v = Double(str.dropLast()) {
+        } else if str.hasSuffix("m") || str.hasSuffix("分") || str.hasSuffix("分钟"), let v = Double(str.dropLast()) {
             total += v * 60
             matched = true
-        } else if str.hasSuffix("s"), let v = Double(str.dropLast()) {
+        } else if str.hasSuffix("s") || str.hasSuffix("秒"), let v = Double(str.dropLast()) {
             total += v
             matched = true
         }
     }
     return matched ? total : .infinity
+}
+
+enum WidgetFormatter {
+    static var isChinese: Bool {
+        Locale.preferredLanguages.first?.hasPrefix("zh") == true
+    }
+
+    static func freshnessText(from date: Date) -> String {
+        let elapsed = max(0, Date().timeIntervalSince(date))
+        if elapsed < 60 {
+            return isChinese ? "刚刚" : "Just now"
+        }
+        let minutes = Int(elapsed / 60)
+        if minutes < 60 {
+            return isChinese ? "\(minutes)分钟前" : "\(minutes)m ago"
+        }
+        let hours = Int(elapsed / 3600)
+        if hours < 24 {
+            return isChinese ? "\(hours)小时前" : "\(hours)h ago"
+        }
+        let days = Int(elapsed / 86400)
+        return isChinese ? "\(days)天前" : "\(days)d ago"
+    }
+
+    static func formatResetText(_ raw: String?, referenceDate: Date = Date()) -> String {
+        guard let text = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty, text != "--" else {
+            return "--"
+        }
+
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let targetDate = iso.date(from: text) ?? ISO8601DateFormatter().date(from: text) {
+            return formatTargetDate(targetDate, relativeTo: referenceDate)
+        }
+
+        let duration = parseResetDuration(text)
+        if duration != .infinity && duration >= 0 {
+            let targetDate = referenceDate.addingTimeInterval(duration)
+            return formatTargetDate(targetDate, relativeTo: referenceDate)
+        }
+
+        return text
+    }
+
+    private static func formatTargetDate(_ targetDate: Date, relativeTo now: Date) -> String {
+        let calendar = Calendar.current
+        let timeFormatter = DateFormatter()
+        timeFormatter.dateFormat = "HH:mm"
+        let timeStr = timeFormatter.string(from: targetDate)
+
+        if !isChinese {
+            if calendar.isDate(targetDate, inSameDayAs: now) {
+                return "Today \(timeStr)"
+            } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(targetDate, inSameDayAs: tomorrow) {
+                return "Tomorrow \(timeStr)"
+            } else {
+                let startOfNow = calendar.startOfDay(for: now)
+                let startOfTarget = calendar.startOfDay(for: targetDate)
+                let diffDays = calendar.dateComponents([.day], from: startOfNow, to: startOfTarget).day ?? 0
+                if diffDays > 1 {
+                    return "\(diffDays)d \(timeStr)"
+                }
+                return timeStr
+            }
+        }
+
+        if calendar.isDate(targetDate, inSameDayAs: now) {
+            return "今天 \(timeStr)"
+        } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(targetDate, inSameDayAs: tomorrow) {
+            return "明天 \(timeStr)"
+        } else {
+            let startOfNow = calendar.startOfDay(for: now)
+            let startOfTarget = calendar.startOfDay(for: targetDate)
+            let diffDays = calendar.dateComponents([.day], from: startOfNow, to: startOfTarget).day ?? 0
+            if diffDays == 2 {
+                return "后天 \(timeStr)"
+            } else if diffDays > 2 {
+                return "\(diffDays)天后 \(timeStr)"
+            } else {
+                return "今天 \(timeStr)"
+            }
+        }
+    }
 }
 
 struct ClipBarWidgetSnapshot: Codable, Sendable {
@@ -87,10 +183,9 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
     let overallRemaining: Double?
     let totalAccounts: Int
     let healthyAccounts: Int
-    let lowQuotaThreshold: Int
 
     enum CodingKeys: String, CodingKey {
-        case lastUpdated, isConfigured, connectionStatus, providers, topThreeProviders, overallRemaining, totalAccounts, healthyAccounts, lowQuotaThreshold
+        case lastUpdated, isConfigured, connectionStatus, providers, topThreeProviders, overallRemaining, totalAccounts, healthyAccounts
     }
 
     init(
@@ -101,8 +196,7 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
         topThreeProviders: [ProviderWidgetData],
         overallRemaining: Double?,
         totalAccounts: Int,
-        healthyAccounts: Int,
-        lowQuotaThreshold: Int = 15
+        healthyAccounts: Int
     ) {
         self.lastUpdated = lastUpdated
         self.isConfigured = isConfigured
@@ -112,7 +206,6 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
         self.overallRemaining = overallRemaining
         self.totalAccounts = totalAccounts
         self.healthyAccounts = healthyAccounts
-        self.lowQuotaThreshold = lowQuotaThreshold
     }
 
     init(from decoder: Decoder) throws {
@@ -125,7 +218,6 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
         overallRemaining = try container.decodeIfPresent(Double.self, forKey: .overallRemaining)
         totalAccounts = try container.decode(Int.self, forKey: .totalAccounts)
         healthyAccounts = try container.decode(Int.self, forKey: .healthyAccounts)
-        lowQuotaThreshold = try container.decodeIfPresent(Int.self, forKey: .lowQuotaThreshold) ?? 15
     }
     static var preview: ClipBarWidgetSnapshot {
         let claude = ProviderWidgetData(
@@ -137,7 +229,7 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
             statusText: "充足",
             windows: [
                 QuotaWindowSummary(label: "5h 限制", remainingPercent: 92.0, resetText: "3h"),
-                QuotaWindowSummary(label: "7d 周额度", remainingPercent: 84.0, resetText: "周一")
+                QuotaWindowSummary(label: "周额度", remainingPercent: 84.0, resetText: "周一")
             ]
         )
         let codex = ProviderWidgetData(
@@ -149,7 +241,7 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
             statusText: "正常",
             windows: [
                 QuotaWindowSummary(label: "5h 限制", remainingPercent: 70.0, resetText: "1h"),
-                QuotaWindowSummary(label: "7d 周额度", remainingPercent: 60.0, resetText: "周一")
+                QuotaWindowSummary(label: "周额度", remainingPercent: 60.0, resetText: "周一")
             ]
         )
         let gemini = ProviderWidgetData(

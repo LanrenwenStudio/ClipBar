@@ -5,56 +5,53 @@ struct QuotaPopoverView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             header
             if !model.groupedAccounts.isEmpty {
                 providerTabs
             }
-            Divider().opacity(0.7)
             content
-            Divider().opacity(0.7)
-            PopoverFooterBar(openSettings: model.openSettings)
+            footer
         }
-        .background(.regularMaterial)
-        .tint(ClipBarTheme.brandColor(for: model.visibleProvider))
+        .padding(12)
         .frame(width: ClipBarTheme.popoverWidth)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(ClipBarTheme.brandColor(for: model.visibleProvider))
-                .frame(height: 2)
-                .animation(.easeInOut(duration: 0.2), value: model.visibleProvider)
-        }
     }
     private var header: some View {
-        HStack(alignment: .center, spacing: ClipBarTheme.spacingM) {
+        HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: ClipBarTheme.spacingS) {
+                HStack(spacing: 6) {
                     Text("ClipBar")
-                        .font(.headline)
+                        .font(.system(size: 13, weight: .semibold))
                     ConnectionBadge(title: connectionText, color: connectionColor)
                 }
                 Text(headerSubtitle)
-                    .font(.footnote)
+                    .font(.system(size: 10))
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
 
-            Spacer(minLength: ClipBarTheme.spacingM)
+            Spacer(minLength: 4)
 
-            RefreshToolbarButton(
-                isRefreshing: model.connection.isRefreshing,
-                isEnabled: model.settings.isConfigured,
-                action: refresh
-            )
+            Button(action: refresh) {
+                Image(systemName: "arrow.clockwise")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(model.connection.isRefreshing ? 360 : 0))
+                    .animation(
+                        model.connection.isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
+                        value: model.connection.isRefreshing
+                    )
+            }
+            .buttonStyle(.plain)
+            .disabled(!model.settings.isConfigured || model.connection.isRefreshing)
+            .help(L10n.t("刷新额度", "Refresh quotas"))
         }
-        .padding(.horizontal, ClipBarTheme.horizontalPadding)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
+        .padding(.horizontal, 2)
+        .padding(.top, 2)
     }
-
     private var providerTabs: some View {
         ScrollView(.horizontal) {
-            HStack(spacing: ClipBarTheme.spacingS) {
+            HStack(spacing: 5) {
                 ForEach(model.groupedAccounts, id: \.provider) { group in
                     ProviderTab(
                         provider: group.provider,
@@ -64,8 +61,8 @@ struct QuotaPopoverView: View {
                     )
                 }
             }
-            .padding(.horizontal, ClipBarTheme.horizontalPadding)
-            .padding(.bottom, 10)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 2)
         }
         .scrollIndicators(.hidden)
     }
@@ -100,37 +97,37 @@ struct QuotaPopoverView: View {
                 )
             }
         } else {
-            VStack(spacing: 0) {
+            VStack(spacing: 6) {
                 ProviderSummaryCard(
                     provider: model.visibleProvider,
                     accountCount: model.visibleTabAccounts.count,
                     remaining: pooledRemaining
                 )
-                Divider().padding(.horizontal, ClipBarTheme.horizontalPadding)
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 0) {
+
+                ViewThatFits(in: .vertical) {
+                    VStack(spacing: 6) {
                         ForEach(model.visibleTabAccounts) { row in
-                            if row.id != model.visibleTabAccounts.first?.id {
-                                Divider().padding(.horizontal, ClipBarTheme.horizontalPadding)
-                            }
                             AccountCard(row: row)
                         }
                     }
+                    ScrollView {
+                        VStack(spacing: 6) {
+                            ForEach(model.visibleTabAccounts) { row in
+                                AccountCard(row: row)
+                            }
+                        }
+                        .padding(.vertical, 1)
+                    }
+                    .scrollIndicators(.hidden)
+                    .frame(maxHeight: ClipBarTheme.popoverMaxListHeight)
                 }
-                .scrollIndicators(.hidden)
-                .frame(height: accountsHeight)
             }
             .id(model.visibleProvider)
             .transaction { $0.animation = nil }
         }
     }
-
-    private var accountsHeight: CGFloat {
-        let height = model.visibleTabAccounts.reduce(CGFloat.zero) { partial, row in
-            let windows = CGFloat(max(row.snapshot.windows.count, 1))
-            return partial + 52.0 + windows * 38.0
-        }
-        return min(ClipBarTheme.popoverMaxListHeight, max(96.0, height))
+    private var footer: some View {
+        PopoverFooterBar(openSettings: model.openSettings)
     }
 
     private var headerSubtitle: String {

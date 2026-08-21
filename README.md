@@ -4,7 +4,7 @@
 
 **ClipBar** 是一款专为搭配 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 使用的 macOS 原生菜单栏轻量看板。
 
-你在本机使用 CLIProxyAPI 聚合多个 AI 平台（如 ChatGPT Plus/Team、Claude Pro/Team、Grok、Gemini 等）的订阅时，ClipBar 可以在 macOS 顶部菜单栏安静常驻，实时显示各账号的 **5 小时速率限制**、**7 天周期额度** 以及 **重置倒计时**，告别写代码写到一半突然遭遇 429 断流。
+你在本机使用 CLIProxyAPI 聚合多个 AI 平台（如 ChatGPT Plus/Team、Claude Pro/Team、Grok、Gemini 等）的订阅时，ClipBar 可以在 macOS 顶部菜单栏安静常驻，实时显示各账号的 **5 小时速率限制**、**周额度** 以及 **重置倒计时**，告别写代码写到一半突然遭遇 429 断流。
 
 ---
 

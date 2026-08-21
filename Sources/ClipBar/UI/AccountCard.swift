@@ -5,22 +5,31 @@ struct AccountCard: View {
     let row: AccountQuota
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ClipBarTheme.spacingS) {
+        VStack(alignment: .leading, spacing: 6) {
             header
 
             if let error = row.snapshot.error, row.snapshot.windows.isEmpty {
                 Text(error)
-                    .font(.footnote)
+                    .font(.system(size: 10))
                     .foregroundStyle(ClipBarTheme.warning)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
-                ForEach(row.snapshot.windows) { window in
-                    QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: row.account.provider, remaining: window.remainingPercent))
+                VStack(spacing: 4) {
+                    ForEach(row.snapshot.windows) { window in
+                        QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: row.account.provider, remaining: window.remainingPercent))
+                    }
                 }
             }
         }
-        .padding(.horizontal, ClipBarTheme.horizontalPadding)
-        .padding(.vertical, 8)
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.primary.opacity(0.03))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(Color.primary.opacity(0.04), lineWidth: 0.5)
+        )
         .opacity(isLocallyDisabled ? 0.55 : 1.0)
         .contextMenu {
             Button {
@@ -61,40 +70,43 @@ struct AccountCard: View {
         }
     }
     private var header: some View {
-        VStack(alignment: .leading, spacing: ClipBarTheme.headerSpacing) {
-            HStack(alignment: .firstTextBaseline, spacing: ClipBarTheme.spacingS) {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .center, spacing: 5) {
                 if isPinned {
                     Image(systemName: "pin.fill")
-                        .font(.caption2)
+                        .font(.system(size: 8.5))
                         .foregroundStyle(.secondary)
                 }
                 Text(primaryTitle)
-                    .font(.headline)
+                    .font(.system(size: 11.5, weight: .medium))
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .layoutPriority(1)
                 if isLocallyDisabled {
                     Text(L10n.t("已忽略", "Ignored"))
-                        .font(.caption2.weight(.semibold))
+                        .font(.system(size: 8.5, weight: .medium))
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 5)
+                        .padding(.horizontal, 4)
                         .padding(.vertical, 1)
-                        .background(Color.primary.opacity(0.08), in: Capsule())
+                        .background(Capsule().fill(Color.primary.opacity(0.06)))
                 }
-                Spacer(minLength: ClipBarTheme.spacingS)
+                Spacer(minLength: 4)
                 if let planLabel {
                     Text(planLabel)
-                        .font(.footnote)
+                        .font(.system(size: 9.5, weight: .medium))
                         .foregroundStyle(.secondary)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(Capsule().fill(Color.primary.opacity(0.05)))
                         .lineLimit(1)
                 }
             }
 
             if let subtitleText {
                 Text(subtitleText)
-                    .font(.footnote)
+                    .font(.system(size: 9.5))
                     .foregroundStyle(subtitleColor)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
         }
     }
@@ -210,7 +222,7 @@ struct AccountCard: View {
                 planType: "plus",
                 windows: [
                     QuotaWindow(id: "5h", label: "5h", remainingPercent: 89, resetText: "2h 14m"),
-                    QuotaWindow(id: "7d", label: "7d", remainingPercent: 64, resetText: "4d"),
+                    QuotaWindow(id: "7d", label: "周额度", remainingPercent: 64, resetText: "4d"),
                 ],
                 error: nil
             )

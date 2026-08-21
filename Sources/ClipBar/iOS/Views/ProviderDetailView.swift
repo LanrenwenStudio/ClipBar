@@ -242,16 +242,13 @@ struct ProviderDetailView: View {
     }
     private var healthStatusText: String {
         guard let avg = averageRemaining else { return L10n.t("未知", "Unknown") }
-        if avg <= 0.5 { return L10n.t("已耗尽", "Exhausted") }
-        if avg <= 20 { return L10n.t("额度紧张", "Low Quota") }
+        if QuotaDisplayScale.isExhausted(avg) { return L10n.t("已耗尽", "Exhausted") }
+        if QuotaDisplayScale.isLow(avg) { return L10n.t("额度紧张", "Low Quota") }
         return L10n.t("正常", "Normal")
     }
 
     private var healthStatusColor: Color {
-        guard let avg = averageRemaining else { return .secondary }
-        if avg <= 0.5 { return ClipBarTheme.danger }
-        if avg <= 20 { return ClipBarTheme.warning }
-        return ClipBarTheme.success
+        ClipBarTheme.progressColor(for: provider, remaining: averageRemaining)
     }
 
     private func triggerHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {

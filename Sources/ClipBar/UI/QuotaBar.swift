@@ -5,32 +5,33 @@ struct QuotaBar: View {
     var tint: Color = ClipBarTheme.accent
 
     var body: some View {
-        VStack(alignment: .leading, spacing: ClipBarTheme.metricSpacing) {
-            HStack(alignment: .firstTextBaseline, spacing: ClipBarTheme.spacingS) {
+        VStack(alignment: .leading, spacing: 3.5) {
+            HStack(alignment: .center, spacing: 4) {
                 Text(titleText)
-                    .font(.body.weight(.medium))
+                    .font(.system(size: 10.5, weight: .medium))
                     .lineLimit(1)
                     .layoutPriority(1)
-                Spacer(minLength: ClipBarTheme.spacingS)
+                Spacer(minLength: 4)
                 if let resetText = window.resetText {
                     Text(resetText)
-                        .font(.footnote)
+                        .font(.system(size: 9.5))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.trailing)
-                        .lineLimit(2)
+                        .lineLimit(1)
                 }
             }
 
-            Capsule()
-                .fill(ClipBarTheme.progressTrack)
-                .frame(height: ClipBarTheme.barHeight)
-                .overlay {
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(ClipBarTheme.progressTrack)
                     Capsule()
                         .fill(barColor)
-                        .scaleEffect(x: fill, y: 1, anchor: .leading)
+                        .frame(width: max(0, min(geo.size.width, geo.size.width * fill)))
                 }
-                .clipShape(Capsule())
-                .accessibilityHidden(true)
+            }
+            .frame(height: 3.5)
+            .accessibilityHidden(true)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
@@ -46,10 +47,7 @@ struct QuotaBar: View {
     }
 
     private var barColor: Color {
-        guard let remaining = window.remainingPercent else { return .secondary }
-        if remaining <= 0.5 { return ClipBarTheme.danger }
-        if remaining <= 20 { return ClipBarTheme.warning }
-        return tint
+        ClipBarTheme.progressColor(for: .unknown, remaining: window.remainingPercent)
     }
 
     private var accessibilityText: String {
@@ -73,7 +71,7 @@ struct QuotaBar: View {
             tint: ClipBarTheme.brandColor(for: .codex)
         )
         QuotaBar(
-            window: QuotaWindow(id: "7d", label: "7d", remainingPercent: 18, resetText: "4d"),
+            window: QuotaWindow(id: "7d", label: "周额度", remainingPercent: 18, resetText: "4d"),
             tint: ClipBarTheme.brandColor(for: .claude)
         )
     }

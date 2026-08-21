@@ -34,11 +34,13 @@ final class AppModel {
         let (cachedAccounts, cachedDate) = store.loadCachedAccounts()
         self.accounts = cachedAccounts
         self.lastRefreshedAt = cachedDate
+        let savedProvider = store.loadLastSelectedProvider()
         if !cachedAccounts.isEmpty {
             self.connection = .online
-            self.selectedProvider = cachedAccounts.first?.account.provider
+            self.selectedProvider = savedProvider ?? cachedAccounts.first?.account.provider
             WidgetDataStore.shared.syncFrom(accounts: cachedAccounts, settings: loadedSettings, connection: .online)
         } else {
+            self.selectedProvider = savedProvider
             self.connection = loadedSettings.isConfigured ? .idle : .unconfigured
         }
         self.launchAtLoginStatus = launchAtLoginService.status
@@ -97,6 +99,9 @@ final class AppModel {
         if let selectedProvider, groupedAccounts.contains(where: { $0.provider == selectedProvider }) {
             return selectedProvider
         }
+        if let saved = store.loadLastSelectedProvider(), groupedAccounts.contains(where: { $0.provider == saved }) {
+            return saved
+        }
         return groupedAccounts.first?.provider ?? .codex
     }
 
@@ -117,15 +122,18 @@ final class AppModel {
 
     func selectProvider(_ provider: QuotaProvider) {
         selectedProvider = provider
+        store.saveLastSelectedProvider(provider)
     }
 
     func selectAccount(_ key: String) {
         if let provider = QuotaProvider(rawValue: key) {
             selectedProvider = provider
+            store.saveLastSelectedProvider(provider)
             return
         }
         if let row = accounts.first(where: { $0.account.statusKey == key }) {
             selectedProvider = row.account.provider
+            store.saveLastSelectedProvider(row.account.provider)
         }
     }
 
@@ -195,18 +203,6 @@ final class AppModel {
         persistPreferences()
     }
 
-    func setLowQuotaAlertThreshold(_ value: Int) {
-        settings.lowQuotaAlertThreshold = value
-        persistPreferences()
-    }
-
-    func setEnableNotifications(_ value: Bool) {
-        settings.enableNotifications = value
-        if value {
-            NotificationManager.shared.requestAuthorization()
-        }
-        persistPreferences()
-    }
     func setAppTheme(_ theme: AppTheme) {
         settings.appTheme = theme
         persistPreferences()
@@ -293,8 +289,6 @@ final class AppModel {
         settings.managementKey = next.normalizedManagementKey
         settings.refreshSeconds = next.clampedRefreshSeconds
         settings.statusQuotaWindow = next.statusQuotaWindow
-        settings.lowQuotaAlertThreshold = next.lowQuotaAlertThreshold
-        settings.enableNotifications = next.enableNotifications
         settings.sortByRemainingQuota = next.sortByRemainingQuota
         settings.appTheme = next.appTheme
         persistPreferences()
@@ -328,10 +322,9 @@ final class AppModel {
                 store.saveCachedAccounts(rows, at: now)
                 connection = .online
                 if selectedProvider == nil {
-                    selectedProvider = rows.first?.account.provider
+                    selectedProvider = store.loadLastSelectedProvider() ?? rows.first?.account.provider
                 }
                 WidgetDataStore.shared.syncFrom(accounts: rows, settings: settings, connection: .online)
-                NotificationManager.shared.checkAndNotify(accounts: rows, settings: settings)
                 return
             } catch {
                 guard !Task.isCancelled else { return }

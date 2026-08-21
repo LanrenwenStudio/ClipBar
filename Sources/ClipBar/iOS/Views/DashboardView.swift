@@ -111,7 +111,7 @@ struct DashboardView: View {
             MetricBox(
                 title: L10n.t("最低剩余额度", "Lowest Quota"),
                 value: lowestQuotaText,
-                subtitle: L10n.t("5h / 7d 最小窗口", "5h / 7d window"),
+                subtitle: L10n.t("5h / 周额度最小窗口", "5h / weekly window"),
                 accentColor: lowestQuotaColor
             )
 
@@ -250,8 +250,8 @@ struct DashboardView: View {
         model.accounts.filter { row in
             let isLocallyDisabled = model.isAccountDisabled(row)
             guard !isLocallyDisabled else { return false }
-            let minRemaining = row.snapshot.windows.compactMap(\.remainingPercent).min() ?? 100
-            return minRemaining <= Double(model.settings.lowQuotaAlertThreshold)
+            let minRemaining = row.snapshot.windows.compactMap(\.remainingPercent).min()
+            return QuotaDisplayScale.isLow(minRemaining)
         }.count
     }
 
@@ -333,10 +333,7 @@ struct DashboardView: View {
 
     private var lowestQuotaColor: Color {
         let lowest = model.accounts.flatMap(\.snapshot.windows).compactMap(\.remainingPercent).min()
-        guard let lowest else { return .secondary }
-        if lowest <= 0.5 { return ClipBarTheme.danger }
-        if lowest <= 20 { return ClipBarTheme.warning }
-        return ClipBarTheme.success
+        return ClipBarTheme.progressColor(for: .unknown, remaining: lowest)
     }
 
     private func triggerHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {

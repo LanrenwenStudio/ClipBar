@@ -7,38 +7,37 @@ struct SettingsProviderRow: View {
     @Binding var isVisible: Bool
 
     var body: some View {
-        HStack(spacing: ClipBarTheme.spacingS) {
+        HStack(spacing: 8) {
             Image(systemName: "line.3.horizontal")
-                .font(.caption)
+                .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
                 .accessibilityHidden(true)
 
-            Button(
-                isVisible
-                    ? L10n.t("隐藏 \(provider.displayName)", "Hide \(provider.displayName)")
-                    : L10n.t("显示 \(provider.displayName)", "Show \(provider.displayName)"),
-                systemImage: isVisible ? "eye.fill" : "eye.slash",
-                action: toggleVisibility
-            )
-            .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
-            .foregroundStyle(isVisible ? ClipBarTheme.accent : .secondary)
-            .frame(width: 24, height: 24)
+            Button(action: toggleVisibility) {
+                Image(systemName: isVisible ? "eye.fill" : "eye.slash")
+                    .font(.system(size: 11))
+                    .foregroundStyle(isVisible ? Color.primary : Color.secondary.opacity(0.4))
+            }
+            .buttonStyle(.plain)
+            .frame(width: 18, height: 18)
 
-            ProviderGlyph(provider: provider, size: 13)
+            ProviderGlyph(provider: provider, size: 12)
 
             Text(provider.displayName)
+                .font(.system(size: 11.5, weight: .medium))
+
             Text(L10n.t("\(accountCount) 个", "\(accountCount)"))
-                .font(.caption)
+                .font(.system(size: 10))
                 .foregroundStyle(.secondary)
 
-            Spacer(minLength: ClipBarTheme.spacingS)
+            Spacer(minLength: 4)
 
             Text(ClipBarTheme.percentText(remaining))
-                .font(.caption.monospacedDigit().weight(.semibold))
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
                 .foregroundStyle(ClipBarTheme.progressColor(for: provider, remaining: remaining))
         }
-        .frame(minHeight: 34)
+        .padding(.vertical, 2)
+        .frame(minHeight: 28)
     }
 
     private func toggleVisibility() {

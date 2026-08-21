@@ -8,26 +8,29 @@ struct ProviderTab: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: 4.5) {
                 ProviderGlyph(
                     provider: provider,
-                    size: 12,
-                    tint: isSelected ? brand : .secondary
+                    size: 11,
+                    tint: isSelected ? .primary : .secondary
                 )
                 Text(provider.displayName)
+                    .font(.system(size: 11, weight: isSelected ? .semibold : .medium))
                 Text("\(accountCount)")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(isSelected ? brand.opacity(0.85) : Color.secondary.opacity(0.7))
+                    .font(.system(size: 9.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(isSelected ? Color.primary.opacity(0.7) : Color.secondary.opacity(0.5))
             }
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(isSelected ? Color.primary : .secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(isSelected ? brand.opacity(0.12) : Color.clear, in: Capsule())
-            .overlay {
+            .foregroundStyle(isSelected ? Color.primary : Color.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
                 Capsule()
-                    .strokeBorder(isSelected ? brand.opacity(0.35) : ClipBarTheme.hairline, lineWidth: 1)
-            }
+                    .fill(isSelected ? Color.primary.opacity(0.09) : Color.primary.opacity(0.03))
+            )
+            .overlay(
+                Capsule()
+                    .strokeBorder(isSelected ? Color.primary.opacity(0.15) : Color.clear, lineWidth: 0.5)
+            )
             .contentShape(Capsule())
         }
         .buttonStyle(.plain)

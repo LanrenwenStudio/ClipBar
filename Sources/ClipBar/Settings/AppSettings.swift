@@ -40,8 +40,6 @@ struct AppSettings: Equatable, Sendable {
     var statusQuotaWindow: StatusQuotaWindow
     var disabledAccountKeys: [String]
     var pinnedAccountKeys: [String]
-    var lowQuotaAlertThreshold: Int
-    var enableNotifications: Bool
     var sortByRemainingQuota: Bool
     var appTheme: AppTheme
 
@@ -55,8 +53,6 @@ struct AppSettings: Equatable, Sendable {
         statusQuotaWindow: .fiveHour,
         disabledAccountKeys: [],
         pinnedAccountKeys: [],
-        lowQuotaAlertThreshold: 15,
-        enableNotifications: true,
         sortByRemainingQuota: true,
         appTheme: .system
     )

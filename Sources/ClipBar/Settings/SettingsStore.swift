@@ -11,12 +11,11 @@ struct SettingsStore {
         static let statusQuotaWindow = "clipbar.statusQuotaWindow"
         static let disabledAccountKeys = "clipbar.disabledAccountKeys"
         static let pinnedAccountKeys = "clipbar.pinnedAccountKeys"
-        static let lowQuotaAlertThreshold = "clipbar.lowQuotaAlertThreshold"
-        static let enableNotifications = "clipbar.enableNotifications"
         static let sortByRemainingQuota = "clipbar.sortByRemainingQuota"
         static let appTheme = "clipbar.appTheme"
         static let cachedAccounts = "clipbar.cachedAccounts"
         static let lastRefreshedAt = "clipbar.lastRefreshedAt"
+        static let lastSelectedProvider = "clipbar.lastSelectedProvider"
     }
 
     private let defaults: UserDefaults
@@ -49,12 +48,6 @@ struct SettingsStore {
         }
         settings.disabledAccountKeys = defaults.stringArray(forKey: Key.disabledAccountKeys) ?? []
         settings.pinnedAccountKeys = defaults.stringArray(forKey: Key.pinnedAccountKeys) ?? []
-        if defaults.object(forKey: Key.lowQuotaAlertThreshold) != nil {
-            settings.lowQuotaAlertThreshold = defaults.integer(forKey: Key.lowQuotaAlertThreshold)
-        }
-        if defaults.object(forKey: Key.enableNotifications) != nil {
-            settings.enableNotifications = defaults.bool(forKey: Key.enableNotifications)
-        }
         if let rawTheme = defaults.string(forKey: Key.appTheme),
            let theme = AppTheme(rawValue: rawTheme) {
             settings.appTheme = theme
@@ -75,8 +68,6 @@ struct SettingsStore {
         defaults.set(settings.statusQuotaWindow.rawValue, forKey: Key.statusQuotaWindow)
         defaults.set(settings.disabledAccountKeys, forKey: Key.disabledAccountKeys)
         defaults.set(settings.pinnedAccountKeys, forKey: Key.pinnedAccountKeys)
-        defaults.set(settings.lowQuotaAlertThreshold, forKey: Key.lowQuotaAlertThreshold)
-        defaults.set(settings.enableNotifications, forKey: Key.enableNotifications)
         defaults.set(settings.sortByRemainingQuota, forKey: Key.sortByRemainingQuota)
         defaults.set(settings.appTheme.rawValue, forKey: Key.appTheme)
     }
@@ -94,6 +85,19 @@ struct SettingsStore {
         if let data = try? JSONEncoder().encode(accounts) {
             defaults.set(data, forKey: Key.cachedAccounts)
             defaults.set(date, forKey: Key.lastRefreshedAt)
+        }
+    }
+
+    func loadLastSelectedProvider() -> QuotaProvider? {
+        guard let raw = defaults.string(forKey: Key.lastSelectedProvider) else { return nil }
+        return QuotaProvider(rawValue: raw)
+    }
+
+    func saveLastSelectedProvider(_ provider: QuotaProvider?) {
+        if let raw = provider?.rawValue {
+            defaults.set(raw, forKey: Key.lastSelectedProvider)
+        } else {
+            defaults.removeObject(forKey: Key.lastSelectedProvider)
         }
     }
 

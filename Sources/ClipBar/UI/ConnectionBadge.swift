@@ -5,20 +5,16 @@ struct ConnectionBadge: View {
     let color: Color
 
     var body: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(color)
                 .frame(width: 5, height: 5)
             Text(title)
-                .font(.caption2.weight(.medium))
+                .font(.system(size: 9.5, weight: .medium))
         }
-        .padding(.horizontal, 7)
+        .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(Color.primary.opacity(0.06), in: Capsule())
-        .overlay {
-            Capsule()
-                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.8)
-        }
+        .background(Capsule().fill(color.opacity(0.12)))
         .foregroundStyle(color)
     }
 }

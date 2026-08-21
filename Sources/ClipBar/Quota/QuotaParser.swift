@@ -1,6 +1,10 @@
 import Foundation
 
 enum QuotaParser {
+    static func weeklyQuotaLabel() -> String {
+        L10n.t("周额度", "Week")
+    }
+
     static func parseCodex(_ object: [String: Any]) -> QuotaSnapshot {
         let plan = JSONValue.firstString(object, paths: ["plan_type", "planType", "account_plan.plan_type"])
         let primary = window(
@@ -11,7 +15,7 @@ enum QuotaParser {
         )
         let secondary = window(
             id: "7d",
-            label: "7d",
+            label: weeklyQuotaLabel(),
             object: object,
             prefix: "rate_limit.secondary_window"
         )
@@ -43,7 +47,7 @@ enum QuotaParser {
         )
         let sevenDay = utilizationWindow(
             id: "7d",
-            label: "7d",
+            label: weeklyQuotaLabel(),
             used: JSONValue.firstDouble(object, paths: [
                 "seven_day.utilization",
                 "seven_day.used_percentage",
@@ -144,7 +148,7 @@ enum QuotaParser {
         return antigravityGroupedWindow(
             groups: groups,
             id: "7d",
-            label: L10n.t("周额度", "Week"),
+            label: weeklyQuotaLabel(),
             matches: isWeeklyWindow
         )
     }
@@ -211,15 +215,16 @@ enum QuotaParser {
         let period = (config["currentPeriod"] as? [String: Any])
             ?? (config["current_period"] as? [String: Any])
             ?? [:]
+        // Grok reports used percent. After reset proto3 omits 0, which is 100% remaining.
         let weeklyUsed = JSONValue.firstDouble(config, paths: ["creditUsagePercent", "credit_usage_percent"])
         let weeklyEnd = JSONValue.firstString(period, paths: ["end"])
             ?? JSONValue.firstString(config, paths: ["periodEnd", "period_end"])
-        if let weeklyUsed {
+        if weeklyUsed != nil || !period.isEmpty {
             windows.append(
                 QuotaWindow(
                     id: "week",
-                    label: L10n.t("周额度", "Week"),
-                    remainingPercent: JSONValue.clampPercent(100 - weeklyUsed),
+                    label: weeklyQuotaLabel(),
+                    remainingPercent: JSONValue.clampPercent(100 - (weeklyUsed ?? 0)),
                     resetText: formatReset(weeklyEnd)
                 )
             )
@@ -274,15 +279,21 @@ enum QuotaParser {
         var windows: [QuotaWindow] = []
 
         if let usageDetail,
-           let weekly = kimiWindow(id: "7d", label: "7d", detail: usageDetail) {
+           let weekly = kimiWindow(id: "7d", label: weeklyQuotaLabel(), detail: usageDetail) {
             windows.append(weekly)
         }
 
         for limit in limits {
             guard let window = limit["window"] as? [String: Any],
                   let detail = limit["detail"] as? [String: Any],
-                  let label = kimiWindowLabel(from: window),
-                  let quotaWindow = kimiWindow(id: label, label: label, detail: detail)
+                  let rawLabel = kimiWindowLabel(from: window)
+            else {
+                continue
+            }
+            let isWeekly = isWeeklyWindow(rawLabel)
+            let id = isWeekly ? "7d" : rawLabel
+            let label = isWeekly ? weeklyQuotaLabel() : rawLabel
+            guard let quotaWindow = kimiWindow(id: id, label: label, detail: detail)
             else {
                 continue
             }
@@ -404,9 +415,9 @@ enum QuotaParser {
         case "TIME_UNIT_HOUR", "HOUR", "HOURS":
             return "\(Int(duration))h"
         case "TIME_UNIT_DAY", "DAY", "DAYS":
-            return "\(Int(duration))d"
+            return duration == 7 ? "7d" : "\(Int(duration))d"
         case "TIME_UNIT_WEEK", "WEEK", "WEEKS":
-            return "\(Int(duration))w"
+            return duration == 1 ? "7d" : "\(Int(duration))w"
         default:
             return nil
         }
@@ -533,7 +544,7 @@ enum QuotaParser {
         }
         return QuotaWindow(
             id: id,
-            label: (limitSeconds ?? 0) >= 86_400 ? "7d" : label,
+            label: (limitSeconds ?? 0) >= 86_400 ? weeklyQuotaLabel() : label,
             remainingPercent: used.map { JSONValue.clampPercent(100 - $0) },
             resetText: resetSeconds.map(formatDuration(seconds:))
         )

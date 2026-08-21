@@ -190,21 +190,12 @@ struct ServerSettingsView: View {
 
             Picker(L10n.t("优先额度窗口", "Preferred Window"), selection: $draft.statusQuotaWindow) {
                 Text(L10n.t("5 小时 / 速率限制", "5 Hours / Rate Limit")).tag(StatusQuotaWindow.fiveHour)
-                Text(L10n.t("周额度 / 7 天", "Weekly / 7 Days")).tag(StatusQuotaWindow.weekly)
+                Text(L10n.t("周额度", "Weekly")).tag(StatusQuotaWindow.weekly)
             }
             Toggle(L10n.t("按剩余额度优先排序", "Sort by Remaining Quota"), isOn: $draft.sortByRemainingQuota)
 
-            Toggle(L10n.t("启用低额度告警通知", "Enable Quota Notifications"), isOn: $draft.enableNotifications)
-
-            if draft.enableNotifications {
-                Picker(L10n.t("低额度提醒阈值", "Alert Threshold"), selection: $draft.lowQuotaAlertThreshold) {
-                    Text("15%").tag(15)
-                    Text("10%").tag(10)
-                    Text("5%").tag(5)
-                }
-            }
         } header: {
-            Text(L10n.t("偏好与通知", "Preferences & Notifications"))
+            Text(L10n.t("偏好", "Preferences"))
         }
     }
 

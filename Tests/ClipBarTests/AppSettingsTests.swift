@@ -36,4 +36,23 @@ struct AppSettingsTests {
 
         #expect(store.load().statusQuotaWindow == .weekly)
     }
+
+    @Test("Last selected provider persists in UserDefaults")
+    func persistsLastSelectedProvider() {
+        let suiteName = "ClipBarTests.SettingsStore.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            Issue.record("Could not create test UserDefaults suite")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults)
+        #expect(store.loadLastSelectedProvider() == nil)
+
+        store.saveLastSelectedProvider(.codex)
+        #expect(store.loadLastSelectedProvider() == .codex)
+
+        store.saveLastSelectedProvider(.claude)
+        #expect(store.loadLastSelectedProvider() == .claude)
+    }
 }
