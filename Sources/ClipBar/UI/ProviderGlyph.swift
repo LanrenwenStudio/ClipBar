@@ -30,7 +30,7 @@ struct ProviderGlyph: View {
             }
 #endif
         }
-        .foregroundStyle(tint ?? ClipBarTheme.brandColor(for: provider))
+        .foregroundStyle(tint ?? .primary)
         .accessibilityHidden(true)
     }
 }

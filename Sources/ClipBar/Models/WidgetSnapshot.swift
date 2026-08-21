@@ -133,6 +133,20 @@ enum WidgetFormatter {
         return text
     }
 
+    private static func humanPeriod(for date: Date) -> String {
+        let hour = Calendar.current.component(.hour, from: date)
+        switch hour {
+        case 0..<6:
+            return "凌晨"
+        case 6..<12:
+            return "上午"
+        case 12..<18:
+            return "下午"
+        default:
+            return "晚上"
+        }
+    }
+
     private static func formatTargetDate(_ targetDate: Date, relativeTo now: Date) -> String {
         let calendar = Calendar.current
         let timeFormatter = DateFormatter()
@@ -155,20 +169,21 @@ enum WidgetFormatter {
             }
         }
 
+        let period = humanPeriod(for: targetDate)
         if calendar.isDate(targetDate, inSameDayAs: now) {
-            return "今天 \(timeStr)"
+            return "今天\(period) \(timeStr)"
         } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(targetDate, inSameDayAs: tomorrow) {
-            return "明天 \(timeStr)"
+            return "明天\(period) \(timeStr)"
         } else {
             let startOfNow = calendar.startOfDay(for: now)
             let startOfTarget = calendar.startOfDay(for: targetDate)
             let diffDays = calendar.dateComponents([.day], from: startOfNow, to: startOfTarget).day ?? 0
             if diffDays == 2 {
-                return "后天 \(timeStr)"
+                return "后天\(period) \(timeStr)"
             } else if diffDays > 2 {
                 return "\(diffDays)天后 \(timeStr)"
             } else {
-                return "今天 \(timeStr)"
+                return "今天\(period) \(timeStr)"
             }
         }
     }
