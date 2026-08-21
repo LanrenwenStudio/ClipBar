@@ -407,15 +407,21 @@ private struct ProviderGridCard: View {
                         .foregroundStyle(progressColor)
                 }
 
-                Capsule()
-                    .fill(ClipBarTheme.progressTrack)
-                    .frame(height: 6)
-                    .overlay {
-                        Capsule()
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 2.0, style: .continuous)
+                            .fill(Color.primary.opacity(0.08))
+                            .frame(height: 8.5)
+
+                        RoundedRectangle(cornerRadius: 2.0, style: .continuous)
                             .fill(progressColor)
-                            .scaleEffect(x: fillRatio, y: 1, anchor: .leading)
+                            .frame(
+                                width: fillRatio <= 0 ? 0 : max(2.0, geo.size.width * fillRatio),
+                                height: 8.5
+                            )
                     }
-                    .clipShape(Capsule())
+                }
+                .frame(height: 8.5)
             }
         }
         .padding(14)

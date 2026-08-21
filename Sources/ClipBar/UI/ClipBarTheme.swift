@@ -24,7 +24,7 @@ enum ClipBarTheme {
     static let headerSpacing: CGFloat = 3
     static let sectionSpacing: CGFloat = 10
     static let metricSpacing: CGFloat = 5
-    static let barHeight: CGFloat = 4.5
+    static let barHeight: CGFloat = 6.5
 
     static let cardRadius: CGFloat = 10
     static let controlRadius: CGFloat = 8

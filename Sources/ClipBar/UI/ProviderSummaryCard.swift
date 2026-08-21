@@ -24,14 +24,19 @@ struct ProviderSummaryCard: View {
 
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(ClipBarTheme.progressTrack)
-                    Capsule()
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(height: 6.5)
+
+                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
                         .fill(percentColor)
-                        .frame(width: max(0, min(geo.size.width, geo.size.width * fill)))
+                        .frame(
+                            width: fill <= 0 ? 0 : max(1.5, min(geo.size.width, geo.size.width * fill)),
+                            height: 6.5
+                        )
                 }
             }
-            .frame(height: 4)
+            .frame(height: 6.5)
             .accessibilityHidden(true)
         }
         .padding(10)

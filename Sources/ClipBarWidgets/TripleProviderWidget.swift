@@ -56,33 +56,30 @@ struct MultiProviderWidgetView: View {
 
     private var glyphSize: CGFloat {
         switch count {
-        case 5: return 10
-        case 4: return 11.5
-        case 3: return 12.5
+        case 5: return 11
+        case 4: return 12
         default: return 13.5
         }
     }
 
     private var percentFontSize: CGFloat {
         switch count {
-        case 5: return 11.5
-        case 4: return 13.0
-        case 3: return 14.5
-        default: return 16.0
+        case 5: return 12
+        case 4: return 13
+        default: return 14
         }
     }
 
     private var barHeight: CGFloat {
         switch count {
-        case 5: return 5.5
+        case 5: return 5.0
         case 4: return 6.0
-        case 3: return 7.0
-        default: return 8.0
+        default: return 7.5
         }
     }
 
     private var barRadius: CGFloat {
-        1.5
+        2.0
     }
 
     var body: some View {
@@ -118,13 +115,12 @@ struct MultiProviderWidgetView: View {
             if displayProviders.isEmpty {
                 placeholderRow
             } else {
-                VStack(spacing: count >= 4 ? 3.0 : 4.5) {
+                VStack(spacing: count >= 4 ? 4.0 : 6.0) {
                     ForEach(displayProviders) { p in
                         providerRow(p)
                     }
                 }
             }
-
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 15)
@@ -137,11 +133,17 @@ struct MultiProviderWidgetView: View {
         let rowColor = ClipBarTheme.widgetBarColor(for: p.provider, remaining: percent)
         let reset = WidgetFormatter.formatResetText(p.nearestResetText ?? p.windows.first?.resetText)
 
-        return VStack(alignment: .leading, spacing: 1.5) {
-            // Header Line: [Icon] <---- Spacer ----> [Percentage]
-            HStack(alignment: .center, spacing: 4) {
+        return VStack(alignment: .leading, spacing: 2) {
+            // Header Line: [Icon] [Name] <---- Spacer ----> [Percentage]
+            HStack(alignment: .center, spacing: 5) {
                 ProviderGlyph(provider: p.provider, size: glyphSize, tint: .primary)
                     .frame(width: glyphSize, height: glyphSize)
+
+                Text(p.displayName)
+                    .font(.system(size: count >= 4 ? 11 : 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
                 Spacer(minLength: 4)
 
@@ -167,20 +169,19 @@ struct MultiProviderWidgetView: View {
             }
             .frame(height: barHeight)
 
-            // Reset countdown
+            // Reset countdown timestamp
             if reset != "--" {
                 HStack(spacing: 2.5) {
                     Spacer(minLength: 0)
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 7.5, weight: .medium))
+                        .font(.system(size: 7, weight: .medium))
                     Text(reset)
-                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                        .font(.system(size: 8, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(Color.secondary)
             }
         }
     }
-
     private var placeholderRow: some View {
         VStack(alignment: .leading, spacing: 2.5) {
             HStack(spacing: 5) {

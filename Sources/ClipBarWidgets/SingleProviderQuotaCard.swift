@@ -27,143 +27,99 @@ struct SingleProviderQuotaCard: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // 1. Top Header Row: [Provider Icon] <--- Spacer ---> [↻ 8分钟前]
-            HStack(alignment: .center, spacing: 6) {
-                ProviderGlyph(provider: provider.provider, size: 18, tint: .primary)
-                    .frame(width: 18, height: 18)
-
-                Spacer(minLength: 4)
-
-                HStack(spacing: 3) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 8.5, weight: .semibold))
-                    Text(freshnessText)
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
-                }
-                .foregroundStyle(Color.secondary)
-            }
-            .padding(.top, 2)
-
-            Spacer(minLength: 3)
-
-            // 2. Main Quota Rows
-            if provider.windows.count >= 2 {
-                let firstTwo = Array(provider.windows.prefix(2))
-                VStack(spacing: 6) {
-                    ForEach(firstTwo) { window in
-                        quotaWindowSection(window)
-                    }
-                }
-            } else {
-                singleQuotaHeroSection
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 15)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
-    }
-
-    // MARK: - Two-Window Layout (e.g. Claude 5h + Weekly)
-    private func quotaWindowSection(_ window: QuotaWindowSummary) -> some View {
-        let percent = min(100, max(0, window.remainingPercent ?? 0))
+        let percent = remainingPercent
         let barColor = ClipBarTheme.widgetBarColor(for: provider.provider, remaining: percent)
-        let reset = WidgetFormatter.formatResetText(window.resetText)
+        let reset = WidgetFormatter.formatResetText(displayWindow?.resetText ?? provider.nearestResetText)
+        let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "可用配额" : "Quota")
 
-        return VStack(alignment: .leading, spacing: 1.5) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(window.label)
-                    .font(.system(size: 12, weight: .medium))
+        VStack(alignment: .leading, spacing: 0) {
+            // 1. Top Header Row: [Provider Icon] [Provider Name] <--- Spacer ---> [↻ 8分钟前]
+            HStack(alignment: .center, spacing: 5) {
+                ProviderGlyph(provider: provider.provider, size: 16, tint: .primary)
+                    .frame(width: 16, height: 16)
+
+                Text(provider.displayName)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.7)
 
                 Spacer(minLength: 4)
 
-                Text("\(Int(percent.rounded()))%")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.primary)
-            }
-
-            // Subtle slightly-rounded rectangle progress bar
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2.0, style: .continuous)
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(height: 11)
-
-                    RoundedRectangle(cornerRadius: 2.0, style: .continuous)
-                        .fill(barColor)
-                        .frame(
-                            width: percent <= 0 ? 0 : max(2.0, geo.size.width * CGFloat(percent / 100.0)),
-                            height: 11
-                        )
-                }
-            }
-            .frame(height: 11)
-
-            if reset != "--" {
                 HStack(spacing: 2.5) {
-                    Spacer(minLength: 0)
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 7.5, weight: .medium))
-                    Text(reset)
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 8, weight: .semibold))
+                    Text(freshnessText)
                         .font(.system(size: 8.5, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(Color.secondary)
             }
-        }
-    }
+            .padding(.top, 1)
 
-    // MARK: - Single Hero Window Layout
-    private var singleQuotaHeroSection: some View {
-        let percent = remainingPercent
-        let barColor = ClipBarTheme.widgetBarColor(for: provider.provider, remaining: percent)
-        let reset = WidgetFormatter.formatResetText(displayWindow?.resetText ?? provider.nearestResetText)
-        let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "剩余额度" : "Remaining")
+            Spacer(minLength: 3)
 
-        return VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(label)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
+            // 2. Subtitle / Window Label
+            Text(label)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(Color.secondary)
+                .lineLimit(1)
 
-                Spacer(minLength: 4)
+            // 3. Hero Metric Big Percentage
+            Text("\(Int(percent.rounded()))%")
+                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                .foregroundStyle(Color.primary)
+                .padding(.top, -2)
 
-                Text("\(Int(percent.rounded()))%")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.primary)
-            }
+            Spacer(minLength: 2)
 
+            // 4. Chunky Micro-Rounded Rectangle Progress Bar (加粗厚实进度条)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2.0, style: .continuous)
+                    RoundedRectangle(cornerRadius: 2.5, style: .continuous)
                         .fill(Color.primary.opacity(0.08))
-                        .frame(height: 15)
+                        .frame(height: 12.5)
 
-                    RoundedRectangle(cornerRadius: 2.0, style: .continuous)
+                    RoundedRectangle(cornerRadius: 2.5, style: .continuous)
                         .fill(barColor)
                         .frame(
-                            width: percent <= 0 ? 0 : max(2.0, geo.size.width * CGFloat(percent / 100.0)),
-                            height: 15
+                            width: percent <= 0 ? 0 : max(2.5, geo.size.width * CGFloat(percent / 100.0)),
+                            height: 12.5
                         )
                 }
             }
-            .frame(height: 15)
+            .frame(height: 12.5)
 
-            if reset != "--" {
-                HStack(spacing: 2.5) {
-                    Spacer(minLength: 0)
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 8, weight: .medium))
-                    Text(reset)
-                        .font(.system(size: 9, weight: .medium, design: .rounded))
+            Spacer(minLength: 4)
+
+            // 5. Bottom Info Row: [Reset Time] <--- Spacer ---> [Account Count]
+            HStack(alignment: .center, spacing: 4) {
+                if reset != "--" {
+                    HStack(spacing: 2.5) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 7.5, weight: .medium))
+                        Text(reset)
+                            .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(Color.secondary)
                 }
-                .foregroundStyle(Color.secondary)
+
+                Spacer(minLength: 4)
+
+                if provider.accountCount > 0 {
+                    HStack(spacing: 2.5) {
+                        Image(systemName: "person.2.fill")
+                            .font(.system(size: 7.5, weight: .medium))
+                        Text(WidgetFormatter.isChinese ? "\(provider.accountCount)个账号" : "\(provider.accountCount) accts")
+                            .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(Color.secondary)
+                }
             }
+            .padding(.bottom, 1)
         }
+        .padding(.horizontal, 15)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
     }
 }
 
