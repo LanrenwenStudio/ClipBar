@@ -38,7 +38,7 @@ struct SingleProviderQuotaCard: View {
                 ProviderGlyph(provider: provider.provider, size: 16, tint: .primary)
                     .frame(width: 16, height: 16)
 
-                Text(provider.displayName)
+                Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)

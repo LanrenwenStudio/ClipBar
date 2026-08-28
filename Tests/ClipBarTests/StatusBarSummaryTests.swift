@@ -38,20 +38,31 @@ struct StatusBarSummaryTests {
         #expect(segments.first?.percent == 50)
     }
 
-    @Test("Status summaries use the selected window and fall back when absent")
-    func selectsPreferredWindow() {
+    @Test("ChatGPT and Antigravity summaries prefer 5h while other providers follow settings")
+    func selectsProviderPreferredWindow() {
         let rows = [
-            row(id: "ag1", provider: .antigravity, remaining: [20, 80], windowIDs: ["5h", "7d"]),
-            row(id: "ag2", provider: .antigravity, remaining: [40], windowIDs: ["5h"])
+            row(id: "c1", provider: .codex, remaining: [20, 80], windowIDs: ["5h", "7d"]),
+            row(id: "ag1", provider: .antigravity, remaining: [40, 90], windowIDs: ["5h", "7d"]),
+            row(id: "cl1", provider: .claude, remaining: [60, 70], windowIDs: ["5h", "7d"])
         ]
-
-        #expect(abs((StatusBarSummary.pooledRemaining(in: rows, preferredWindow: .fiveHour) ?? 0) - 30) < 0.001)
-        #expect(abs((StatusBarSummary.pooledRemaining(in: rows, preferredWindow: .weekly) ?? 0) - 60) < 0.001)
-
         var settings = AppSettings.default
         settings.statusQuotaWindow = .weekly
+
         let segments = StatusBarSummary.segments(from: rows, settings: settings)
-        #expect(segments.first?.percent == 60)
+
+        #expect(segments.first { $0.provider == .codex }?.percent == 20)
+        #expect(segments.first { $0.provider == .antigravity }?.percent == 40)
+        #expect(segments.first { $0.provider == .claude }?.percent == 70)
+    }
+
+    @Test("Five-hour summaries fall back when the provider has no 5h window")
+    func fallsBackWhenFiveHourWindowIsAbsent() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [80], windowIDs: ["7d"]),
+            row(id: "ag1", provider: .antigravity, remaining: [90], windowIDs: ["7d"])
+        ]
+
+        #expect(abs((StatusBarSummary.pooledRemaining(in: rows, preferredWindow: .weekly) ?? 0) - 85) < 0.001)
     }
 
     @Test("Hidden providers are omitted")

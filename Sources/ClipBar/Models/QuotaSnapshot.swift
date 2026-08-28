@@ -15,7 +15,7 @@ enum QuotaProvider: String, CaseIterable, Identifiable, Sendable, Codable {
         case .codex: "Codex"
         case .claude: "Claude"
         case .geminiCLI: "Gemini CLI"
-        case .antigravity: "Antigravity"
+        case .antigravity: "Agy"
         case .kimi: "Kimi"
         case .xai: "Grok"
         case .unknown: "Other"

@@ -74,8 +74,8 @@ enum StatusBarSummary {
     }
 
     /// Remaining / capacity across enabled accounts only.
-    /// Each enabled account is one unit. Remaining is the average of its
-    /// selected quota window when available, falling back to the other window when needed.
+    /// Each enabled account is one unit. ChatGPT and Antigravity prefer their
+    /// 5-hour window when available; other providers follow the configured window.
     static func pooledRemaining(
         in rows: [AccountQuota],
         preferredWindow: StatusQuotaWindow = .fiveHour,
@@ -85,11 +85,24 @@ enum StatusBarSummary {
         guard !enabled.isEmpty else { return nil }
         var remainingUnits = 0.0
         for row in enabled {
-            let percents = selectedPercents(in: row.snapshot.windows, preferredWindow: preferredWindow)
+            let window = effectiveWindow(for: row.account.provider, configured: preferredWindow)
+            let percents = selectedPercents(in: row.snapshot.windows, preferredWindow: window)
             guard !percents.isEmpty else { continue }
             remainingUnits += percents.reduce(0, +) / Double(percents.count) / 100
         }
         return remainingUnits / Double(enabled.count) * 100
+    }
+
+    private static func effectiveWindow(
+        for provider: QuotaProvider,
+        configured: StatusQuotaWindow
+    ) -> StatusQuotaWindow {
+        switch provider {
+        case .codex, .antigravity:
+            .fiveHour
+        default:
+            configured
+        }
     }
 
     private static func selectedPercents(

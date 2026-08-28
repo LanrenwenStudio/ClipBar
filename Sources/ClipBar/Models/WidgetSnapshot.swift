@@ -155,7 +155,7 @@ enum WidgetFormatter {
 
         if !isChinese {
             if calendar.isDate(targetDate, inSameDayAs: now) {
-                return "Today \(timeStr)"
+                return timeStr
             } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(targetDate, inSameDayAs: tomorrow) {
                 return "Tomorrow \(timeStr)"
             } else {
@@ -171,7 +171,7 @@ enum WidgetFormatter {
 
         let period = humanPeriod(for: targetDate)
         if calendar.isDate(targetDate, inSameDayAs: now) {
-            return "今天\(period) \(timeStr)"
+            return "\(period) \(timeStr)"
         } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(targetDate, inSameDayAs: tomorrow) {
             return "明天\(period) \(timeStr)"
         } else {
@@ -183,7 +183,7 @@ enum WidgetFormatter {
             } else if diffDays > 2 {
                 return "\(diffDays)天后 \(timeStr)"
             } else {
-                return "今天\(period) \(timeStr)"
+                return "\(period) \(timeStr)"
             }
         }
     }
@@ -273,7 +273,7 @@ struct ClipBarWidgetSnapshot: Codable, Sendable {
         )
         let antigravity = ProviderWidgetData(
             providerRawValue: "antigravity",
-            displayName: "Antigravity",
+            displayName: "Agy",
             remainingPercent: 18.0,
             accountCount: 1,
             healthyCount: 0,

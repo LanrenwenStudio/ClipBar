@@ -10,3 +10,4 @@ xcuserdata/
 *.profraw
 dist/
 ClipBar.xcodeproj/
+build/
