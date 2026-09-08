@@ -85,7 +85,7 @@ struct LockScreenMultiProviderView: View {
 
         let barPercent = split?.weekly ?? primaryPercent
 
-        return HStack(alignment: .center, spacing: 4) {
+        return HStack(alignment: .center, spacing: 3.5) {
             // 1. 左侧：图标 + 渠道名
             HStack(spacing: 2.0) {
                 ProviderGlyph(provider: p.provider, size: 9.5)
@@ -95,31 +95,44 @@ struct LockScreenMultiProviderView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .frame(width: 44, alignment: .leading)
+            .frame(width: 42, alignment: .leading)
 
             // 2. 中间：分段胶囊进度条
             SegmentedPillBar(
                 percent: barPercent,
-                totalSegments: 12,
+                totalSegments: 10,
                 barHeight: 7.5,
                 segmentSpacing: 1.4,
                 cornerRadius: 0.8,
                 activeColor: .primary,
                 inactiveColor: Color.primary.opacity(0.18)
             )
-            .frame(width: 46)
+            .frame(width: 38)
 
             Spacer(minLength: 0)
 
-            // 3. 右侧数值
+            // 3. 右侧数值：与状态栏统一的 5 小时胶囊风格
             Group {
                 if let split {
-                    HStack(spacing: 1.0) {
-                        Text("\(Int(split.fiveHour.rounded()))%")
-                            .font(.system(size: 8.0, weight: .bold, design: .rounded))
+                    HStack(spacing: 2.0) {
+                        HStack(spacing: 1.0) {
+                            Text("\(Int(split.fiveHour.rounded()))%")
+                                .font(.system(size: 8.0, weight: .bold, design: .rounded))
+                            Text("5h")
+                                .font(.system(size: 6.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 3.0)
+                        .padding(.vertical, 1.0)
+                        .background(
+                            Capsule()
+                                .fill(Color.primary.opacity(0.12))
+                        )
+
                         Text("/")
                             .font(.system(size: 6.5, weight: .regular))
                             .foregroundStyle(.secondary)
+
                         Text("\(Int(split.weekly.rounded()))%")
                             .font(.system(size: 8.0, weight: .bold, design: .rounded))
                     }
