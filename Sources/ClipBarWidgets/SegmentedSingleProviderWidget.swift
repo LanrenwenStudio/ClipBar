@@ -85,54 +85,53 @@ struct SegmentedSingleProviderQuotaCard: View {
 
             Spacer(minLength: 6)
 
-            // 2. 核心大数值区域：浑然一体的层次排版
+            // 2. 核心数值区域：[5小时额度 5h] 周额度
             if let split = splitWindows {
                 let fivePercent = split.fiveHour.remainingPercent ?? 0
                 let weekPercent = split.weekly.remainingPercent ?? 0
+                let isLow = fivePercent <= 20
+                let isCritical = fivePercent <= 10
+                let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
+                let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
                 VStack(alignment: .leading, spacing: 3) {
-                    // 主视角：周额度超大数字 + 附属 5小时额度精致胶囊标签
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text("\(Int(weekPercent.rounded()))")
-                            .font(.system(size: 34, weight: .heavy, design: .rounded))
-                            .foregroundStyle(Color.primary)
-                        Text("%")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.secondary)
-
-                        Spacer(minLength: 6)
-
-                        // 5小时额度精致胶囊标签（额度偏低时变色提醒小巧思）
-                        let isLow = fivePercent <= 20
-                        let isCritical = fivePercent <= 10
-                        let tintColor: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
-                        let bgFill: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
-
-                        HStack(spacing: 3) {
-                            Text("5h")
-                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                                .foregroundStyle(isLow ? tintColor : Color.secondary)
+                    HStack(alignment: .center, spacing: 5) {
+                        // [百分比 5h] 紧凑胶囊，小巧辅助呈现
+                        HStack(spacing: 1.5) {
                             Text("\(Int(fivePercent.rounded()))%")
-                                .font(.system(size: 11, weight: .bold, design: .monospaced))
-                                .foregroundStyle(tintColor)
+                                .font(.system(size: 12.0, weight: .heavy, design: .rounded))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .foregroundStyle(badgeTint)
+                            Text("5h")
+                                .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .foregroundStyle(isLow ? badgeTint : Color.secondary)
                         }
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1.5)
                         .background(
                             Capsule()
-                                .fill(bgFill)
+                                .fill(badgeBg)
                         )
                         .overlay(
                             Capsule()
-                                .strokeBorder(isLow ? tintColor.opacity(0.35) : Color.clear, lineWidth: 0.6)
+                                .strokeBorder(isLow ? badgeTint.opacity(0.35) : Color.clear, lineWidth: 0.7)
                         )
-                        .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 3 }
-                    }
 
-                    // 辅助提示小字
-                    Text(WidgetFormatter.isChinese ? "周额度剩余" : "Weekly quota left")
-                        .font(.system(size: 9.5, weight: .medium))
-                        .foregroundStyle(Color.secondary)
+                        // 周额度百分比（大号主视觉，层级分明）
+                        Text("\(Int(weekPercent.rounded()))%")
+                            .font(.system(size: 27, weight: .heavy, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .foregroundStyle(Color.primary)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+
                 }
             } else {
                 let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "可用配额" : "Quota")

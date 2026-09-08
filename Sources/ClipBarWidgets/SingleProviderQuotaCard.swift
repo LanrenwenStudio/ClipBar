@@ -7,7 +7,32 @@ struct SingleProviderQuotaCard: View {
     let entry: SingleProviderEntry
     let provider: ProviderWidgetData
 
+    private var splitWindows: (fiveHour: QuotaWindowSummary, weekly: QuotaWindowSummary)? {
+        guard let fiveHour = provider.windows.first(where: isFiveHourWindow),
+              let weekly = provider.windows.first(where: isWeeklyWindow)
+        else {
+            return nil
+        }
+        return (fiveHour, weekly)
+    }
+
+    private func isFiveHourWindow(_ window: QuotaWindowSummary) -> Bool {
+        let label = window.label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return label == "5h" || label.contains("5h") || label.contains("five-hour") || label.contains("five hour")
+    }
+
+    private func isWeeklyWindow(_ window: QuotaWindowSummary) -> Bool {
+        let label = window.label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return label == "7d"
+            || label.contains("周")
+            || label == "week"
+            || label.contains("weekly")
+    }
+
     private var displayWindow: QuotaWindowSummary? {
+        if let split = splitWindows {
+            return split.fiveHour
+        }
         guard let target = provider.remainingPercent else {
             return provider.windows.first
         }
@@ -58,17 +83,65 @@ struct SingleProviderQuotaCard: View {
 
             Spacer(minLength: 3)
 
-            // 2. Subtitle / Window Label
-            Text(label)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(Color.secondary)
-                .lineLimit(1)
+            // 2. Subtitle & Hero Metric
+            if let split = splitWindows {
+                let fivePercent = split.fiveHour.remainingPercent ?? 0
+                let weekPercent = split.weekly.remainingPercent ?? 0
+                let isLow = fivePercent <= 20
+                let isCritical = fivePercent <= 10
+                let tintColor: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
+                let bgFill: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
-            // 3. Hero Metric Big Percentage
-            Text("\(Int(percent.rounded()))%")
-                .font(.system(size: 30, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.primary)
-                .padding(.top, -2)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .center, spacing: 5) {
+                        // [百分比 5h] 紧凑胶囊，小巧辅助呈现
+                        HStack(spacing: 1.5) {
+                            Text("\(Int(fivePercent.rounded()))%")
+                                .font(.system(size: 12.0, weight: .heavy, design: .rounded))
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .foregroundStyle(tintColor)
+                            Text("5h")
+                                .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .foregroundStyle(isLow ? tintColor : Color.secondary)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1.5)
+                        .background(
+                            Capsule()
+                                .fill(bgFill)
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(isLow ? tintColor.opacity(0.35) : Color.clear, lineWidth: 0.7)
+                        )
+
+                        // 周额度百分比（大号主视觉）
+                        Text("\(Int(weekPercent.rounded()))%")
+                            .font(.system(size: 26, weight: .heavy, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .foregroundStyle(Color.primary)
+                    }
+                    .fixedSize(horizontal: true, vertical: false)
+
+                }
+            } else {
+                Text(label)
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundStyle(Color.secondary)
+                    .lineLimit(1)
+
+                Text("\(Int(percent.rounded()))%")
+                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                    .foregroundStyle(Color.primary)
+                    .padding(.top, -2)
+            }
 
             Spacer(minLength: 2)
 

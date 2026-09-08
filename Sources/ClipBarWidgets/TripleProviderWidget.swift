@@ -157,21 +157,39 @@ struct MultiProviderWidgetView: View {
                 Spacer(minLength: 4)
 
                 if let splitWindows {
-                    HStack(alignment: .center, spacing: 1.5) {
-                        Text(compactPercent(splitWindows.fiveHour))
-                            .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                    let fivePercent = splitWindows.fiveHour.remainingPercent ?? 0
+                    let isLow = fivePercent <= 20
+                    let isCritical = fivePercent <= 10
+                    let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
+                    let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
-                        Text("/")
-                            .font(.system(size: max(7.0, percentFontSize - 2.5), weight: .regular, design: .rounded))
-                            .foregroundStyle(Color.secondary.opacity(0.5))
-                            .fixedSize()
+                    HStack(alignment: .bottom, spacing: 2.5) {
+                        // [5小时百分比 5h] 紧凑胶囊，保护渠道名空间
+                        HStack(spacing: 1.0) {
+                            Text(compactPercent(splitWindows.fiveHour))
+                                .font(.system(size: max(6.5, percentFontSize - 2.5), weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(badgeTint)
+                            Text("5h")
+                                .font(.system(size: max(5.5, percentFontSize - 4.0), weight: .semibold, design: .rounded))
+                                .foregroundStyle(isLow ? badgeTint : Color.secondary)
+                        }
+                        .padding(.horizontal, 2.5)
+                        .padding(.vertical, 0.8)
+                        .background(
+                            Capsule()
+                                .fill(badgeBg)
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(isLow ? badgeTint.opacity(0.35) : Color.clear, lineWidth: 0.5)
+                        )
 
+                        // 周额度百分比
                         Text(compactPercent(splitWindows.weekly))
-                            .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.primary)
+                            .font(.system(size: percentFontSize, weight: .heavy, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(Color.primary.opacity(0.9))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }

@@ -183,21 +183,19 @@ struct SegmentedMultiProviderWidgetView: View {
                     let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
                     let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
-                    HStack(alignment: .firstTextBaseline, spacing: 3) {
-                        Text(compactPercent(splitWindows.weekly))
-                            .font(.system(size: percentFontSize + 1.0, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.primary)
-
-                        HStack(spacing: 1.5) {
-                            Text("5h")
-                                .font(.system(size: max(6.5, percentFontSize - 3.5), weight: .semibold, design: .rounded))
-                                .foregroundStyle(isLow ? badgeTint : Color.secondary)
+                    HStack(alignment: .bottom, spacing: 3.0) {
+                        // [5小时百分比 5h] 紧凑精致胶囊，避免挤占左侧渠道名
+                        HStack(spacing: 1.0) {
                             Text(compactPercent(splitWindows.fiveHour))
-                                .font(.system(size: max(7.5, percentFontSize - 2.0), weight: .medium, design: .monospaced))
-                                .foregroundStyle(badgeTint.opacity(isLow ? 1.0 : 0.8))
+                                .font(.system(size: max(6.8, percentFontSize - 2.8), weight: .bold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(badgeTint)
+                            Text("5h")
+                                .font(.system(size: max(5.8, percentFontSize - 4.2), weight: .semibold, design: .rounded))
+                                .foregroundStyle(isLow ? badgeTint : Color.secondary)
                         }
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1.5)
+                        .padding(.horizontal, 3.0)
+                        .padding(.vertical, 1.0)
                         .background(
                             Capsule()
                                 .fill(badgeBg)
@@ -206,6 +204,12 @@ struct SegmentedMultiProviderWidgetView: View {
                             Capsule()
                                 .strokeBorder(isLow ? badgeTint.opacity(0.35) : Color.clear, lineWidth: 0.5)
                         )
+
+                        // 周额度百分比
+                        Text(compactPercent(splitWindows.weekly))
+                            .font(.system(size: percentFontSize + 0.5, weight: .heavy, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(Color.primary)
                     }
                     .layoutPriority(1)
                 } else {
