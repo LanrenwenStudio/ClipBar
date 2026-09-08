@@ -42,12 +42,38 @@ struct MenuBarStatusLabel: View {
     private func displayTitle(for segment: StatusSegment) -> some View {
         if let fiveHour = segment.fiveHourRemaining,
            let weekly = segment.weeklyRemaining {
-            Text("\(Int(fiveHour.rounded()))%")
-                .monospacedDigit()
-            Text("/")
-                .foregroundStyle(.white.opacity(0.42))
-            Text("\(Int(weekly.rounded()))%")
-                .monospacedDigit()
+            HStack(alignment: .center, spacing: 3.5) {
+                // 主额度：周额度清晰展示
+                Text("\(Int(weekly.rounded()))%")
+                    .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+
+                // 辅助额度：与小组件同款的 5 小时精致小胶囊
+                let isLow = fiveHour <= 20
+                let isCritical = fiveHour <= 10
+                let badgeColor: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : .white)
+                let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.24) : (isLow ? ClipBarTheme.warning.opacity(0.22) : Color.white.opacity(0.12))
+
+                HStack(spacing: 2) {
+                    Text("5h")
+                        .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isLow ? badgeColor : Color.white.opacity(0.85))
+                    Text("\(Int(fiveHour.rounded()))%")
+                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundStyle(badgeColor)
+                }
+                .padding(.horizontal, 4.5)
+                .padding(.vertical, 1.5)
+                .background(
+                    Capsule()
+                        .fill(badgeBg)
+                )
+                .overlay(
+                    Capsule()
+                        .strokeBorder(isLow ? badgeColor.opacity(0.4) : Color.clear, lineWidth: 0.5)
+                )
+            }
         } else {
             Text(segment.displayTitle)
                 .monospacedDigit()
