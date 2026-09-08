@@ -28,36 +28,75 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum StatusQuotaDisplay: String, CaseIterable, Identifiable, Sendable {
+    case fiveHour = "5h"
+    case weekly = "7d"
+    case both = "both"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .fiveHour:
+            L10n.t("5 小时额度", "5-hour quota")
+        case .weekly:
+            L10n.t("周额度", "Weekly quota")
+        case .both:
+            L10n.t("两者都显示", "Show both")
+        }
+    }
+}
+
 struct AppSettings: Equatable, Sendable {
     static let refreshIntervalPresets = [60, 180, 300, 600, 900]
+    static let backendURL = "http://192.168.1.3:8081"
+    static let backendAccessToken = "clipbar-kevin"
 
     var baseURL: String
     var managementKey: String
+    var backendURL: String
+    var backendAccessToken: String
     var refreshSeconds: Int
     var statusItemOrder: [String]
     var hiddenStatusItemIDs: [String]
     var hideEmptyStatusItems: Bool
     var statusQuotaWindow: StatusQuotaWindow
+    var statusQuotaDisplay: StatusQuotaDisplay
+    var statusQuotaDisplayOverrides: [String: StatusQuotaDisplay]
     var disabledAccountKeys: [String]
     var pinnedAccountKeys: [String]
     var sortByRemainingQuota: Bool
     var appTheme: AppTheme
 
+    private static let defaultBaseURL = ""
+
     static let `default` = AppSettings(
-        baseURL: "http://127.0.0.1:8317",
+        baseURL: Self.defaultBaseURL,
         managementKey: "",
+        backendURL: Self.backendURL,
+        backendAccessToken: Self.backendAccessToken,
         refreshSeconds: 300,
         statusItemOrder: [],
         hiddenStatusItemIDs: [],
         hideEmptyStatusItems: false,
         statusQuotaWindow: .fiveHour,
+        statusQuotaDisplay: .fiveHour,
+        statusQuotaDisplayOverrides: [:],
         disabledAccountKeys: [],
         pinnedAccountKeys: [],
         sortByRemainingQuota: true,
         appTheme: .system
     )
     var isConfigured: Bool {
-        !normalizedBaseURL.isEmpty && !normalizedManagementKey.isEmpty
+        usesBackend || (!normalizedBaseURL.isEmpty && !normalizedManagementKey.isEmpty)
+    }
+
+    var usesBackend: Bool {
+        !normalizedBackendURL.isEmpty && !normalizedBackendAccessToken.isEmpty
+    }
+
+    var activeURL: String {
+        usesBackend ? normalizedBackendURL : normalizedBaseURL
     }
 
     var normalizedBaseURL: String {
@@ -66,6 +105,14 @@ struct AppSettings: Equatable, Sendable {
 
     var normalizedManagementKey: String {
         managementKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var normalizedBackendURL: String {
+        backendURL.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var normalizedBackendAccessToken: String {
+        backendAccessToken.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var clampedRefreshSeconds: Int {
@@ -87,6 +134,15 @@ struct AppSettings: Equatable, Sendable {
     var pinnedAccountKeySet: Set<String> {
         Set(pinnedAccountKeys)
     }
+
+    func statusQuotaDisplay(for provider: QuotaProvider) -> StatusQuotaDisplay {
+        statusQuotaDisplayOverrides[provider.rawValue] ?? statusQuotaDisplay
+    }
+
+    func statusQuotaDisplayOverride(for provider: QuotaProvider) -> StatusQuotaDisplay? {
+        statusQuotaDisplayOverrides[provider.rawValue]
+    }
+
     func isProviderHidden(_ provider: QuotaProvider) -> Bool {
         hiddenStatusItemIDSet.contains(provider.rawValue)
     }

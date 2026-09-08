@@ -38,7 +38,7 @@ struct ServerSettingsView: View {
                     }
                     .font(.body.weight(.semibold))
                     .tint(ClipBarTheme.accent)
-                    .disabled(draft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!draft.isConfigured)
                 }
             }
             .onAppear {
@@ -52,11 +52,49 @@ struct ServerSettingsView: View {
     private var connectionSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("管理接口地址 (Base URL)", "Management URL (Base URL)"))
+                Text(L10n.t("后端地址", "Backend URL"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("http://192.168.1.100:8317", text: $draft.baseURL)
+                TextField(AppSettings.backendURL, text: $draft.backendURL)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+            }
+            .padding(.vertical, 4)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.t("后端访问令牌", "Backend Access Token"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                HStack {
+                    if revealsKey {
+                        TextField(L10n.t("已内置后端令牌", "Built-in backend token"), text: $draft.backendAccessToken)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    } else {
+                        SecureField(L10n.t("已内置后端令牌", "Built-in backend token"), text: $draft.backendAccessToken)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+
+                    Button {
+                        revealsKey.toggle()
+                    } label: {
+                        Image(systemName: revealsKey ? "eye.slash" : "eye")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.t("CLIProxyAPI 地址（直连兼容）", "CLIProxyAPI URL (direct fallback)"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField(L10n.t("可选", "Optional"), text: $draft.baseURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
@@ -74,6 +112,10 @@ struct ServerSettingsView: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                Text(L10n.t("仅在未配置 ClipBar 后端时使用。", "Used only when the ClipBar backend is not configured."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             .padding(.vertical, 4)
 
@@ -103,16 +145,42 @@ struct ServerSettingsView: View {
             }
             .padding(.vertical, 4)
         } header: {
-            Text(L10n.t("CLIProxyAPI 连接", "CLIProxyAPI Connection"))
+            Text(L10n.t("ClipBar 后端", "ClipBar Backend"))
         } footer: {
-            Text(L10n.t("对应 CLIProxyAPI 配置文件中的 remote-management.secret-key。数据仅保存在本机，不会上传到任何外部服务器。", "Matches remote-management.secret-key in CLIProxyAPI config. Stored locally on this device only."))
+            Text(L10n.t("优先读取后端缓存；后端未配置时继续兼容 CLIProxyAPI 直连。", "Uses the backend snapshot first; keeps direct CLIProxyAPI as a fallback when the backend is not configured."))
         }
+    }
+
+    private var currentConnectionMethodRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: model.settings.isConfigured ? (model.settings.usesBackend ? "server.rack" : "arrow.left.arrow.right") : "questionmark.circle")
+                .foregroundStyle(model.settings.isConfigured ? ClipBarTheme.accent : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.t("当前连接方式", "Current Connection Method"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(connectionMethodTitle)
+                    .font(.subheadline.weight(.medium))
+            }
+            Spacer()
+        }
+    }
+
+    private var connectionMethodTitle: String {
+        guard model.settings.isConfigured else {
+            return L10n.t("尚未配置", "Not configured")
+        }
+        return model.settings.usesBackend
+            ? L10n.t("ClipBar Backend 同步", "ClipBar Backend sync")
+            : L10n.t("CLIProxyAPI 直连", "CLIProxyAPI direct fallback")
     }
 
     // MARK: - Diagnosis Section
 
     private var diagnosisSection: some View {
         Section {
+            currentConnectionMethodRow
+
             Button {
                 testConnection()
             } label: {
@@ -131,7 +199,7 @@ struct ServerSettingsView: View {
                     }
                 }
             }
-            .disabled(isTesting || draft.baseURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(isTesting || !draft.isConfigured)
 
             if let result = testResult {
                 switch result {
@@ -186,6 +254,11 @@ struct ServerSettingsView: View {
                     let minutes = preset / 60
                     Text(L10n.t("\(minutes) 分钟", "\(minutes) Minutes")).tag(preset)
                 }
+            }
+            if let error = model.backendSettingsSyncError, draft.usesBackend {
+                Text(L10n.t("同步刷新设置失败：\(error)", "Could not sync refresh setting: \(error)"))
+                    .font(.caption)
+                    .foregroundStyle(ClipBarTheme.danger)
             }
 
             Picker(L10n.t("优先额度窗口", "Preferred Window"), selection: $draft.statusQuotaWindow) {
@@ -245,7 +318,12 @@ struct ServerSettingsView: View {
         Task {
             let start = DispatchTime.now()
             do {
-                let rows = try await QuotaService(client: ManagementClient(settings: testSettings)).refresh()
+                let rows: [AccountQuota]
+                if testSettings.usesBackend {
+                    rows = try await QuotaBackendClient(settings: testSettings).fetchSnapshot().accounts
+                } else {
+                    rows = try await QuotaService(client: ManagementClient(settings: testSettings)).refresh()
+                }
                 let end = DispatchTime.now()
                 let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds
                 let latencyMs = Int(nanoTime / 1_000_000)

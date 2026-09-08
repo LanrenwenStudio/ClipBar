@@ -13,6 +13,7 @@ final class AppModel {
     var launchAtLoginError: String?
     var isSettingsPresented = false
     var popoverDismissalRequest = 0
+    var backendSettingsSyncError: String?
 
     @ObservationIgnored
     private let store: SettingsStore
@@ -25,7 +26,8 @@ final class AppModel {
 
     init(
         store: SettingsStore = SettingsStore(),
-        launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService()
+        launchAtLoginService: LaunchAtLoginService = LaunchAtLoginService(),
+        startPolling: Bool = true
     ) {
         self.launchAtLoginService = launchAtLoginService
         self.store = store
@@ -45,7 +47,10 @@ final class AppModel {
         }
         self.launchAtLoginStatus = launchAtLoginService.status
         self.launchAtLoginError = nil
-        start()
+        if startPolling {
+            start()
+            Task { await syncRefreshIntervalFromBackend() }
+        }
     }
 
     var statusSegments: [StatusSegment] {
@@ -159,6 +164,24 @@ final class AppModel {
 
     func setStatusQuotaWindow(_ window: StatusQuotaWindow) {
         settings.statusQuotaWindow = window
+        persistPreferences()
+    }
+
+    func setStatusQuotaDisplay(_ display: StatusQuotaDisplay) {
+        settings.statusQuotaDisplay = display
+        persistPreferences()
+    }
+
+    func statusQuotaDisplay(for provider: QuotaProvider) -> StatusQuotaDisplay {
+        settings.statusQuotaDisplay(for: provider)
+    }
+
+    func setStatusQuotaDisplay(_ display: StatusQuotaDisplay?, for provider: QuotaProvider) {
+        if let display {
+            settings.statusQuotaDisplayOverrides[provider.rawValue] = display
+        } else {
+            settings.statusQuotaDisplayOverrides.removeValue(forKey: provider.rawValue)
+        }
         persistPreferences()
     }
 
@@ -287,6 +310,8 @@ final class AppModel {
     func saveSettings(_ next: AppSettings) {
         settings.baseURL = next.normalizedBaseURL
         settings.managementKey = next.normalizedManagementKey
+        settings.backendURL = next.normalizedBackendURL
+        settings.backendAccessToken = next.normalizedBackendAccessToken
         settings.refreshSeconds = next.clampedRefreshSeconds
         settings.statusQuotaWindow = next.statusQuotaWindow
         settings.sortByRemainingQuota = next.sortByRemainingQuota
@@ -294,10 +319,43 @@ final class AppModel {
         persistPreferences()
         popoverDismissalRequest += 1
         restartPolling()
+        if settings.usesBackend {
+            Task { await syncRefreshIntervalToBackendIfNeeded() }
+        }
         Task { await refresh(force: true) }
     }
 
-    func refresh(force: Bool = false) async {
+    func syncRefreshIntervalFromBackend() async {
+        guard settings.usesBackend else { return }
+        do {
+            let seconds = try await QuotaBackendClient(settings: settings).fetchRefreshInterval()
+            let normalized = AppSettings.nearestRefreshInterval(to: seconds)
+            guard normalized != settings.refreshSeconds else { return }
+            settings.refreshSeconds = normalized
+            store.save(settings)
+            restartPolling()
+        } catch {
+            backendSettingsSyncError = error.localizedDescription
+        }
+    }
+
+    private func syncRefreshIntervalToBackendIfNeeded() async {
+        guard settings.usesBackend else { return }
+        do {
+            let seconds = try await QuotaBackendClient(settings: settings).updateRefreshInterval(settings.refreshSeconds)
+            let normalized = AppSettings.nearestRefreshInterval(to: seconds)
+            if normalized != settings.refreshSeconds {
+                settings.refreshSeconds = normalized
+                store.save(settings)
+                restartPolling()
+            }
+            backendSettingsSyncError = nil
+        } catch {
+            backendSettingsSyncError = error.localizedDescription
+        }
+    }
+
+    func refresh(force: Bool = false, forceBackend: Bool = false) async {
         guard settings.isConfigured else {
             connection = .unconfigured
             accounts = []
@@ -315,7 +373,19 @@ final class AppModel {
         connection = .refreshing
         refreshTask = Task {
             do {
-                let rows = try await QuotaService(client: ManagementClient(settings: settings)).refresh()
+                let rows: [AccountQuota]
+                if settings.usesBackend {
+                    let client = QuotaBackendClient(settings: settings)
+                    let result: (accounts: [AccountQuota], updatedAt: Date?)
+                    if forceBackend {
+                        result = try await client.refreshSnapshot()
+                    } else {
+                        result = try await client.fetchSnapshot()
+                    }
+                    rows = result.accounts
+                } else {
+                    rows = try await QuotaService(client: ManagementClient(settings: settings)).refresh()
+                }
                 accounts = rows
                 let now = Date()
                 lastRefreshedAt = now
@@ -340,7 +410,19 @@ final class AppModel {
         WidgetDataStore.shared.syncFrom(accounts: accounts, settings: settings, connection: connection)
     }
 
+    @MainActor
+    static func performBackgroundRefresh() async -> Bool {
+        let model = AppModel(startPolling: false)
+        await model.syncRefreshIntervalFromBackend()
+        await model.refresh(force: true)
+        return model.connection == .online
+    }
+
     private func start() {
+        #if os(iOS)
+        BackgroundRefreshScheduler.register()
+        BackgroundRefreshScheduler.schedule()
+        #endif
         restartPolling()
         if let last = lastRefreshedAt, !accounts.isEmpty {
             let elapsed = Date().timeIntervalSince(last)

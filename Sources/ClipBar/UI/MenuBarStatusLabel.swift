@@ -25,8 +25,7 @@ struct MenuBarStatusLabel: View {
                                 .resizable()
                                 .frame(width: 13, height: 13)
                         }
-                        Text(segment.percentText)
-                            .monospacedDigit()
+                        displayTitle(for: segment)
                     }
                 }
             }
@@ -37,6 +36,22 @@ struct MenuBarStatusLabel: View {
         .fixedSize()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.statusAccessibilityLabel)
+    }
+
+    @ViewBuilder
+    private func displayTitle(for segment: StatusSegment) -> some View {
+        if let fiveHour = segment.fiveHourRemaining,
+           let weekly = segment.weeklyRemaining {
+            Text("\(Int(fiveHour.rounded()))%")
+                .monospacedDigit()
+            Text("/")
+                .foregroundStyle(.white.opacity(0.42))
+            Text("\(Int(weekly.rounded()))%")
+                .monospacedDigit()
+        } else {
+            Text(segment.displayTitle)
+                .monospacedDigit()
+        }
     }
 }
 #endif

@@ -30,7 +30,7 @@ struct DashboardView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         triggerHaptic(.light)
-                        Task { await model.refresh(force: true) }
+                        Task { await model.refresh(force: true, forceBackend: true) }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 15, weight: .semibold))
@@ -51,7 +51,7 @@ struct DashboardView: View {
             }
             .refreshable {
                 triggerHaptic(.medium)
-                await model.refresh(force: true)
+                await model.refresh(force: true, forceBackend: true)
             }
             .sheet(isPresented: $showingSettings) {
                 ServerSettingsView()
@@ -82,9 +82,16 @@ struct DashboardView: View {
                     Text(connectionStatusTitle)
                         .font(.subheadline.weight(.semibold))
                 }
-                Text(model.settings.normalizedBaseURL)
-                    .font(.caption)
-                    .foregroundStyle(Color.primary.opacity(0.70))
+                HStack(spacing: 4) {
+                    Image(systemName: connectionMethodIcon)
+                        .font(.caption2)
+                    Text(connectionMethodTitle)
+                        .font(.caption2.weight(.medium))
+                }
+                .foregroundStyle(Color.primary.opacity(0.58))
+                Text(model.settings.activeURL)
+                    .font(.caption2)
+                    .foregroundStyle(Color.primary.opacity(0.45))
                     .lineLimit(1)
             }
 
@@ -129,10 +136,10 @@ struct DashboardView: View {
     private var providersSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(L10n.t("已监控渠道", "Monitored Providers"))
+                Text(L10n.t("多渠道", "Multi-Provider"))
                     .font(.headline)
                 Spacer()
-                if model.groupedAccounts.count > 1 {
+                if dashboardProviderGroups.count > 1 {
                     Button {
                         triggerHaptic(.light)
                         showingReorderSheet = true
@@ -148,13 +155,13 @@ struct DashboardView: View {
                         .background(ClipBarTheme.accent.opacity(0.12), in: Capsule())
                     }
                 } else {
-                    Text("\(model.groupedAccounts.count) " + L10n.t("个渠道", "Providers"))
+                    Text("\(dashboardProviderGroups.count) " + L10n.t("个渠道", "Providers"))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            if model.groupedAccounts.isEmpty {
+            if dashboardProviderGroups.isEmpty {
                 if model.connection == .refreshing {
                     HStack {
                         Spacer()
@@ -165,16 +172,22 @@ struct DashboardView: View {
                     }
                     .background(Color(uiColor: .secondarySystemGroupedBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                } else if model.groupedAccounts.isEmpty {
+                    UnavailableStateView(
+                        title: L10n.t("还没有渠道 Token", "No Channel Tokens"),
+                        detail: L10n.t("添加至少一个渠道 Token 后，这里会显示 5 小时和周额度。", "Add at least one provider token to see 5-hour and weekly quotas here."),
+                        systemImage: "key.slash"
+                    )
                 } else {
                     UnavailableStateView(
-                        title: L10n.t("暂无额度数据", "No Quota Data"),
-                        detail: L10n.t("请检查 CLIProxyAPI 是否正常运行并已配置账号。", "Ensure CLIProxyAPI is running with accounts added."),
-                        systemImage: "antenna.radiowaves.left.and.right.slash"
+                        title: L10n.t("暂无可用渠道", "No Available Providers"),
+                        detail: L10n.t("已配置的渠道暂时没有可用额度数据，请检查 Token 后重试。", "Configured providers have no available quota data. Check the tokens and try again."),
+                        systemImage: "chart.bar.xaxis"
                     )
                 }
             } else {
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                    ForEach(model.groupedAccounts, id: \.provider) { group in
+                    ForEach(dashboardProviderGroups, id: \.provider) { group in
                         Button {
                             triggerHaptic(.light)
                             selectedProvider = group.provider
@@ -204,7 +217,7 @@ struct DashboardView: View {
 
     private var analyticsSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if !model.groupedAccounts.isEmpty {
+            if !dashboardProviderGroups.isEmpty {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(L10n.t("账号健康度统计", "Account Status Health"))
                         .font(.headline)
@@ -244,6 +257,13 @@ struct DashboardView: View {
                 .padding(.top, 4)
             }
         }
+    }
+
+    private var dashboardProviderGroups: [(provider: QuotaProvider, rows: [AccountQuota])] {
+        Array(model.groupedAccounts.compactMap { group in
+            let rows = StatusBarSummary.enabledAccounts(in: group.rows, settings: model.settings)
+            return rows.isEmpty ? nil : (group.provider, rows)
+        }.prefix(3))
     }
 
     private var lowOrExhaustedCount: Int {
@@ -325,6 +345,19 @@ struct DashboardView: View {
         }
     }
 
+    private var connectionMethodIcon: String {
+        model.settings.usesBackend ? "server.rack" : "arrow.left.arrow.right"
+    }
+
+    private var connectionMethodTitle: String {
+        guard model.settings.isConfigured else {
+            return L10n.t("尚未配置连接方式", "No connection method configured")
+        }
+        return model.settings.usesBackend
+            ? L10n.t("ClipBar 后端同步", "ClipBar backend sync")
+            : L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI")
+    }
+
     private var lowestQuotaText: String {
         let lowest = model.accounts.flatMap(\.snapshot.windows).compactMap(\.remainingPercent).min()
         guard let lowest else { return "--" }
@@ -396,32 +429,9 @@ private struct ProviderGridCard: View {
                     .background(Color.primary.opacity(0.06), in: Capsule())
             }
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(L10n.t("剩余配额", "Remaining"))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(ClipBarTheme.percentText(remainingPercent))
-                        .font(.subheadline.monospacedDigit().weight(.bold))
-                        .foregroundStyle(progressColor)
-                }
-
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2.0, style: .continuous)
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(height: 8.5)
-
-                        RoundedRectangle(cornerRadius: 2.0, style: .continuous)
-                            .fill(progressColor)
-                            .frame(
-                                width: fillRatio <= 0 ? 0 : max(2.0, geo.size.width * fillRatio),
-                                height: 8.5
-                            )
-                    }
-                }
-                .frame(height: 8.5)
+            VStack(alignment: .leading, spacing: 8) {
+                quotaRow(label: L10n.t("5 小时", "5h"), remaining: fiveHourRemaining)
+                quotaRow(label: L10n.t("周额度", "Weekly"), remaining: weeklyRemaining)
             }
         }
         .padding(14)
@@ -434,22 +444,41 @@ private struct ProviderGridCard: View {
         }
     }
 
-    private var remainingPercent: Double? {
-        StatusBarSummary.pooledRemaining(
-            in: accounts,
-            preferredWindow: model.settings.statusQuotaWindow,
-            settings: model.settings
-        )
+    private var fiveHourRemaining: Double? {
+        StatusBarSummary.exactPooledRemaining(in: accounts, window: .fiveHour, settings: model.settings)
     }
 
-    private var fillRatio: CGFloat {
-        guard let remaining = remainingPercent else { return 0 }
-        return max(0, min(1, CGFloat(remaining / 100)))
+    private var weeklyRemaining: Double? {
+        StatusBarSummary.exactPooledRemaining(in: accounts, window: .weekly, settings: model.settings)
     }
 
-    private var progressColor: Color {
-        ClipBarTheme.progressColor(for: provider, remaining: remainingPercent)
+    @ViewBuilder
+    private func quotaRow(label: String, remaining: Double?) -> some View {
+        let color = ClipBarTheme.progressColor(for: provider, remaining: remaining)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(ClipBarTheme.percentText(remaining))
+                    .font(.subheadline.monospacedDigit().weight(.bold))
+                    .foregroundStyle(color)
+            }
+
+            SegmentedPillBar(
+                percent: remaining ?? 0,
+                totalSegments: 22,
+                barHeight: 12,
+                segmentSpacing: 1.8,
+                cornerRadius: 0.9,
+                activeColor: color,
+                inactiveColor: Color.primary.opacity(0.08)
+            )
+            .opacity(remaining == nil ? 0.7 : 1.0)
+        }
     }
+
 }
 
 private struct HealthMetricCard: View {

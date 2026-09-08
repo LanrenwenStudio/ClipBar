@@ -11,3 +11,7 @@ xcuserdata/
 dist/
 ClipBar.xcodeproj/
 build/
+backend/data/
+backend/.env
+.pi/
+TODO.md

@@ -4,11 +4,15 @@ struct SettingsStore {
     private enum Key {
         static let baseURL = "clipbar.baseURL"
         static let managementKey = "clipbar.managementKey"
+        static let backendURL = "clipbar.backendURL"
+        static let backendAccessToken = "clipbar.backendAccessToken"
         static let refreshSeconds = "clipbar.refreshSeconds"
         static let statusItemOrder = "clipbar.statusItemOrder"
         static let hiddenStatusItemIDs = "clipbar.hiddenStatusItemIDs"
         static let hideEmptyStatusItems = "clipbar.hideEmptyStatusItems"
         static let statusQuotaWindow = "clipbar.statusQuotaWindow"
+        static let statusQuotaDisplay = "clipbar.statusQuotaDisplay"
+        static let statusQuotaDisplayOverrides = "clipbar.statusQuotaDisplayOverrides"
         static let disabledAccountKeys = "clipbar.disabledAccountKeys"
         static let pinnedAccountKeys = "clipbar.pinnedAccountKeys"
         static let sortByRemainingQuota = "clipbar.sortByRemainingQuota"
@@ -33,6 +37,12 @@ struct SettingsStore {
         if let key = defaults.string(forKey: Key.managementKey) {
             settings.managementKey = key
         }
+        if let backendURL = defaults.string(forKey: Key.backendURL), !backendURL.isEmpty {
+            settings.backendURL = backendURL
+        }
+        if let token = defaults.string(forKey: Key.backendAccessToken), !token.isEmpty {
+            settings.backendAccessToken = token
+        }
         let refresh = defaults.integer(forKey: Key.refreshSeconds)
         if refresh > 0 {
             settings.refreshSeconds = refresh
@@ -45,6 +55,17 @@ struct SettingsStore {
         if let raw = defaults.string(forKey: Key.statusQuotaWindow),
            let window = StatusQuotaWindow(rawValue: raw) {
             settings.statusQuotaWindow = window
+        }
+        if let raw = defaults.string(forKey: Key.statusQuotaDisplay),
+           let display = StatusQuotaDisplay(rawValue: raw) {
+            settings.statusQuotaDisplay = display
+        }
+        if let rawOverrides = defaults.dictionary(forKey: Key.statusQuotaDisplayOverrides) as? [String: String] {
+            settings.statusQuotaDisplayOverrides = rawOverrides.reduce(into: [:]) { result, item in
+                if let display = StatusQuotaDisplay(rawValue: item.value) {
+                    result[item.key] = display
+                }
+            }
         }
         settings.disabledAccountKeys = defaults.stringArray(forKey: Key.disabledAccountKeys) ?? []
         settings.pinnedAccountKeys = defaults.stringArray(forKey: Key.pinnedAccountKeys) ?? []
@@ -61,11 +82,18 @@ struct SettingsStore {
     func save(_ settings: AppSettings) {
         defaults.set(settings.normalizedBaseURL, forKey: Key.baseURL)
         defaults.set(settings.normalizedManagementKey, forKey: Key.managementKey)
+        defaults.set(settings.normalizedBackendURL, forKey: Key.backendURL)
+        defaults.set(settings.normalizedBackendAccessToken, forKey: Key.backendAccessToken)
         defaults.set(settings.clampedRefreshSeconds, forKey: Key.refreshSeconds)
         defaults.set(settings.statusItemOrder, forKey: Key.statusItemOrder)
         defaults.set(settings.hiddenStatusItemIDs, forKey: Key.hiddenStatusItemIDs)
         defaults.set(settings.hideEmptyStatusItems, forKey: Key.hideEmptyStatusItems)
         defaults.set(settings.statusQuotaWindow.rawValue, forKey: Key.statusQuotaWindow)
+        defaults.set(settings.statusQuotaDisplay.rawValue, forKey: Key.statusQuotaDisplay)
+        defaults.set(
+            settings.statusQuotaDisplayOverrides.mapValues(\.rawValue),
+            forKey: Key.statusQuotaDisplayOverrides
+        )
         defaults.set(settings.disabledAccountKeys, forKey: Key.disabledAccountKeys)
         defaults.set(settings.pinnedAccountKeys, forKey: Key.pinnedAccountKeys)
         defaults.set(settings.sortByRemainingQuota, forKey: Key.sortByRemainingQuota)
@@ -106,11 +134,14 @@ struct SettingsStore {
         let pairs = [
             ("clipquota.baseURL", Key.baseURL),
             ("clipquota.managementKey", Key.managementKey),
+            ("clipquota.backendURL", Key.backendURL),
+            ("clipquota.backendAccessToken", Key.backendAccessToken),
             ("clipquota.refreshSeconds", Key.refreshSeconds),
             ("clipquota.statusItemOrder", Key.statusItemOrder),
             ("clipquota.hiddenStatusItemIDs", Key.hiddenStatusItemIDs),
             ("clipquota.hideEmptyStatusItems", Key.hideEmptyStatusItems),
-            ("clipquota.statusQuotaWindow", Key.statusQuotaWindow)
+            ("clipquota.statusQuotaWindow", Key.statusQuotaWindow),
+            ("clipquota.statusQuotaDisplay", Key.statusQuotaDisplay)
         ]
         for (old, new) in pairs {
             if defaults.object(forKey: new) == nil, let value = defaults.object(forKey: old) {

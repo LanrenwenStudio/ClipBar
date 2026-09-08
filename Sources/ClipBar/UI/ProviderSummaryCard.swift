@@ -4,6 +4,7 @@ struct ProviderSummaryCard: View {
     let provider: QuotaProvider
     let accountCount: Int
     let remaining: Double?
+    let weeklyRemaining: Double?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -22,22 +23,20 @@ struct ProviderSummaryCard: View {
                     .foregroundStyle(percentColor)
             }
 
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(height: 6.5)
+            quotaBar(for: remaining, color: percentColor)
 
-                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                        .fill(percentColor)
-                        .frame(
-                            width: fill <= 0 ? 0 : max(1.5, min(geo.size.width, geo.size.width * fill)),
-                            height: 6.5
-                        )
+            if let weeklyRemaining {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(L10n.t("周额度", "Weekly quota"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(ClipBarTheme.percentText(weeklyRemaining))
+                        .font(.system(size: 11.5, weight: .bold, design: .monospaced))
+                        .foregroundStyle(weeklyColor)
                 }
+                quotaBar(for: weeklyRemaining, color: weeklyColor)
             }
-            .frame(height: 6.5)
-            .accessibilityHidden(true)
         }
         .padding(10)
         .background(
@@ -49,17 +48,46 @@ struct ProviderSummaryCard: View {
                 .strokeBorder(Color.primary.opacity(0.05), lineWidth: 0.5)
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(L10n.t(
-            "\(provider.displayName) 剩余 \(ClipBarTheme.percentText(remaining))，\(accountCount) 个账号",
-            "\(provider.displayName) remaining \(ClipBarTheme.percentText(remaining)), \(accountCount) accounts"
-        ))
+        .accessibilityLabel(accessibilityText)
     }
 
-    private var fill: CGFloat {
-        CGFloat((remaining ?? 0) / 100)
+    @ViewBuilder
+    private func quotaBar(for value: Double?, color: Color) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .fill(Color.primary.opacity(0.08))
+                    .frame(height: 6.5)
+
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .fill(color)
+                    .frame(
+                        width: value == nil ? 0 : max(1.5, min(geo.size.width, geo.size.width * fill(for: value))),
+                        height: 6.5
+                    )
+            }
+        }
+        .frame(height: 6.5)
+        .accessibilityHidden(true)
+    }
+
+    private func fill(for value: Double?) -> CGFloat {
+        CGFloat(max(0, min(100, value ?? 0)) / 100)
     }
 
     private var percentColor: Color {
         ClipBarTheme.progressColor(for: provider, remaining: remaining)
+    }
+
+    private var weeklyColor: Color {
+        ClipBarTheme.progressColor(for: provider, remaining: weeklyRemaining)
+    }
+
+    private var accessibilityText: String {
+        let weekly = weeklyRemaining.map { L10n.t(", 周额度 \(ClipBarTheme.percentText($0))", ", weekly quota \(ClipBarTheme.percentText($0))") } ?? ""
+        return L10n.t(
+            "\(provider.displayName) 剩余 \(ClipBarTheme.percentText(remaining))\(weekly)，\(accountCount) 个账号",
+            "\(provider.displayName) remaining \(ClipBarTheme.percentText(remaining))\(weekly), \(accountCount) accounts"
+        )
     }
 }

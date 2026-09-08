@@ -101,7 +101,8 @@ struct QuotaPopoverView: View {
                 ProviderSummaryCard(
                     provider: model.visibleProvider,
                     accountCount: model.visibleTabAccounts.count,
-                    remaining: pooledRemaining
+                    remaining: pooledRemaining,
+                    weeklyRemaining: weeklyPooledRemaining
                 )
 
                 ViewThatFits(in: .vertical) {
@@ -179,8 +180,15 @@ struct QuotaPopoverView: View {
         )
     }
 
+    private var weeklyPooledRemaining: Double? {
+        StatusBarSummary.exactPooledRemaining(
+            in: model.visibleTabAccounts,
+            window: .weekly
+        )
+    }
+
     private func refresh() {
-        Task { await model.refresh(force: true) }
+        Task { await model.refresh(force: true, forceBackend: true) }
     }
 }
 

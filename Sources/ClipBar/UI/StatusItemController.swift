@@ -59,6 +59,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             _ = model.settings.hiddenStatusItemIDs
             _ = model.settings.hideEmptyStatusItems
             _ = model.settings.statusQuotaWindow
+            _ = model.settings.statusQuotaDisplay
+            _ = model.settings.statusQuotaDisplayOverrides
             _ = model.connection
             _ = model.statusTitle
             _ = model.isSettingsPresented

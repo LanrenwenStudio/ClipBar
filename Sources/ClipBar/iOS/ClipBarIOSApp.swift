@@ -12,6 +12,13 @@ struct ClipBarIOSApp: App {
                 .tint(ClipBarTheme.accent)
                 .preferredColorScheme(model.settings.appTheme.colorScheme)
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                BackgroundRefreshScheduler.schedule()
+            }
+        }
     }
+
+    @Environment(\.scenePhase) private var scenePhase
 }
 #endif

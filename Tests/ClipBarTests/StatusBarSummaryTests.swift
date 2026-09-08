@@ -23,6 +23,49 @@ struct StatusBarSummaryTests {
         #expect(segments[1].percent == 60)
     }
 
+    @Test("Menu bar can show exact 5h and weekly quota together")
+    func showsBothQuotaWindows() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [20, 80], windowIDs: ["5h", "7d"])
+        ]
+        var settings = AppSettings.default
+        settings.statusQuotaDisplay = .both
+
+        let segment = StatusBarSummary.segments(from: rows, settings: settings).first
+        #expect(segment?.displayTitle == "20% / 80%")
+        #expect(segment?.fiveHourRemaining == 20)
+        #expect(segment?.weeklyRemaining == 80)
+    }
+
+    @Test("Provider quota display override selects its own menu bar value")
+    func selectsProviderQuotaDisplayOverride() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [20, 80], windowIDs: ["5h", "7d"]),
+            row(id: "cl1", provider: .claude, remaining: [40, 60], windowIDs: ["5h", "7d"])
+        ]
+        var settings = AppSettings.default
+        settings.statusQuotaDisplay = .weekly
+        settings.statusQuotaDisplayOverrides[QuotaProvider.codex.rawValue] = .both
+
+        let segments = StatusBarSummary.segments(from: rows, settings: settings)
+        #expect(segments.first { $0.provider == .codex }?.displayTitle == "20% / 80%")
+        #expect(segments.first { $0.provider == .claude }?.displayTitle == "60%")
+    }
+
+    @Test("Menu bar display setting selects one quota window")
+    func selectsSingleQuotaWindowForDisplay() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [20, 80], windowIDs: ["5h", "7d"])
+        ]
+        var settings = AppSettings.default
+        settings.statusQuotaDisplay = .weekly
+
+        let segment = StatusBarSummary.segments(from: rows, settings: settings).first
+        #expect(segment?.displayTitle == "80%")
+        #expect(segment?.fiveHourRemaining == nil)
+        #expect(segment?.weeklyRemaining == 80)
+    }
+
     @Test("Disabled accounts are excluded from the remaining total")
     func ignoresDisabledAccounts() {
         let rows = [
@@ -93,6 +136,15 @@ struct StatusBarSummaryTests {
     @Test("Empty accounts fall back to CPA")
     func emptyFallback() {
         #expect(StatusBarSummary.title(from: [], fallback: "CPA") == "CPA")
+    }
+
+    @Test("Live quota data distinguishes channels with no token data")
+    func detectsLiveQuotaData() {
+        let live = row(id: "live", provider: .codex, remaining: [40], windowIDs: ["5h"])
+        let empty = row(id: "empty", provider: .claude, remaining: [])
+
+        #expect(StatusBarSummary.enabledAccounts(in: [live]).contains { $0.snapshot.hasLiveData })
+        #expect(!StatusBarSummary.enabledAccounts(in: [empty]).contains { $0.snapshot.hasLiveData })
     }
 
     private func row(

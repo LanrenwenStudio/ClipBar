@@ -4,37 +4,8 @@ import WidgetKit
 import UIKit
 #endif
 
-struct MultiProviderEntry: TimelineEntry {
-    let date: Date
-    let snapshot: ClipBarWidgetSnapshot
-}
-
-// Backward compatibility alias
-typealias TripleProviderEntry = MultiProviderEntry
-
-struct MultiProviderTimelineProvider: TimelineProvider {
-    typealias Entry = MultiProviderEntry
-
-    func placeholder(in context: Context) -> MultiProviderEntry {
-        MultiProviderEntry(date: Date(), snapshot: .preview)
-    }
-
-    func getSnapshot(in context: Context, completion: @escaping (MultiProviderEntry) -> Void) {
-        let snapshot = WidgetDataStore.shared.loadSnapshot()
-        completion(MultiProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot))
-    }
-
-    func getTimeline(in context: Context, completion: @escaping (Timeline<MultiProviderEntry>) -> Void) {
-        let snapshot = WidgetDataStore.shared.loadSnapshot()
-        let entry = MultiProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot)
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
-    }
-}
-
-typealias TripleProviderTimelineProvider = MultiProviderTimelineProvider
-
-struct MultiProviderWidgetView: View {
+/// 分段胶囊风格多渠道概览小组件视图（支持 1 / 2 / 3 渠道动态自适应）
+struct SegmentedMultiProviderWidgetView: View {
     let entry: MultiProviderEntry
     let maxCount: Int
 
@@ -54,46 +25,100 @@ struct MultiProviderWidgetView: View {
         WidgetFormatter.freshnessText(from: entry.snapshot.lastUpdated)
     }
 
+    // 动态尺寸与分段配置
     private var glyphSize: CGFloat {
         switch count {
-        case 5: return 11
-        case 4: return 12
-        case 3: return 13.0
+        case 1: return 15.0
         case 2: return 13.5
-        default: return 14.5
+        default: return 12.5
+        }
+    }
+
+    private var titleFontSize: CGFloat {
+        switch count {
+        case 1: return 13.0
+        case 2: return 11.5
+        default: return 10.5
         }
     }
 
     private var percentFontSize: CGFloat {
         switch count {
-        case 5: return 8.5
-        case 4: return 9.0
-        case 3: return 9.5
+        case 1: return 11.0
         case 2: return 10.0
-        default: return 11.0
+        default: return 9.5
         }
     }
 
     private var barHeight: CGFloat {
         switch count {
-        case 5: return 5.0
-        case 4: return 6.0
-        case 3: return 7.5
-        case 2: return 10.0
+        case 1: return 24.0
+        case 2: return 16.0
         default: return 12.0
         }
     }
 
-    private var barRadius: CGFloat {
+    private var segmentCount: Int {
         switch count {
-        case 1, 2: return 3.0
-        default: return 2.0
+        case 1: return 26
+        case 2: return 24
+        default: return 22
+        }
+    }
+
+    private var segmentSpacing: CGFloat {
+        switch count {
+        case 1: return 2.2
+        case 2: return 2.0
+        default: return 1.8
+        }
+    }
+
+    private var cornerRadius: CGFloat {
+        switch count {
+        case 1: return 1.2
+        case 2: return 1.0
+        default: return 0.8
+        }
+    }
+
+    private var rowSpacing: CGFloat {
+        switch count {
+        case 1: return 0
+        case 2: return 12.0
+        default: return 6.0
+        }
+    }
+
+    private var providerInnerSpacing: CGFloat {
+        switch count {
+        case 1: return 5.0
+        case 2: return 3.5
+        default: return 2.5
+        }
+    }
+
+    private var resetFontSize: CGFloat {
+        switch count {
+        case 1: return 9.0
+        case 2: return 8.5
+        default: return 7.5
+        }
+    }
+
+    private var resetIconSize: CGFloat {
+        switch count {
+        case 1: return 8.0
+        case 2: return 7.5
+        default: return 6.5
         }
     }
 
     var body: some View {
-        if !entry.snapshot.isConfigured || entry.snapshot.providers.isEmpty {
+        if !entry.snapshot.isConfigured {
             unconfiguredView
+        } else if displayProviders.isEmpty {
+            exhaustedOrEmptyView
         } else {
             multiProviderCard
         }
@@ -118,18 +143,16 @@ struct MultiProviderWidgetView: View {
                 .foregroundStyle(Color.secondary)
             }
             .padding(.top, 2)
+
             Spacer(minLength: 2)
 
             // Main Provider Rows
-            if displayProviders.isEmpty {
-                placeholderRow
-            } else {
-                VStack(spacing: count >= 4 ? 4.0 : (count == 3 ? 6.0 : 8.0)) {
-                    ForEach(displayProviders) { p in
-                        providerRow(p)
-                    }
+            VStack(spacing: rowSpacing) {
+                ForEach(displayProviders) { p in
+                    providerRow(p)
                 }
             }
+
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 15)
@@ -143,13 +166,14 @@ struct MultiProviderWidgetView: View {
         let splitWindows = splitQuotaWindows(for: p)
         let reset = WidgetFormatter.formatResetText(p.nearestResetText ?? p.windows.first?.resetText)
 
-        return VStack(alignment: .leading, spacing: 2) {
+        return VStack(alignment: .leading, spacing: providerInnerSpacing) {
+            // 头部：图标 + 标题 + 百分比
             HStack(alignment: .center, spacing: 5) {
                 ProviderGlyph(provider: p.provider, size: glyphSize, tint: .primary)
                     .frame(width: glyphSize, height: glyphSize)
 
                 Text(p.provider == .antigravity ? "Agy" : p.displayName)
-                    .font(.system(size: count >= 4 ? 10.5 : 11.5, weight: .semibold, design: .rounded))
+                    .font(.system(size: titleFontSize, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -166,7 +190,7 @@ struct MultiProviderWidgetView: View {
 
                         Text("/")
                             .font(.system(size: max(7.0, percentFontSize - 2.5), weight: .regular, design: .rounded))
-                            .foregroundStyle(Color.secondary.opacity(0.5))
+                            .foregroundStyle(Color.secondary.opacity(0.45))
                             .fixedSize()
 
                         Text(compactPercent(splitWindows.weekly))
@@ -186,30 +210,25 @@ struct MultiProviderWidgetView: View {
                 }
             }
 
+            // 进度条：垂直细长竖线阵列
             if let splitWindows {
-                dualQuotaBars(
+                dualSegmentedBars(
                     fiveHour: splitWindows.fiveHour,
                     weekly: splitWindows.weekly,
                     provider: p.provider
                 )
             } else {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(height: barHeight)
-
-                        RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                            .fill(rowColor)
-                            .frame(
-                                width: percent <= 0 ? 0 : max(barRadius, geo.size.width * CGFloat(percent / 100.0)),
-                                height: barHeight
-                            )
-                    }
-                }
-                .frame(height: barHeight)
+                SegmentedPillBar(
+                    percent: percent,
+                    totalSegments: segmentCount,
+                    barHeight: barHeight,
+                    segmentSpacing: segmentSpacing,
+                    cornerRadius: cornerRadius,
+                    activeColor: rowColor
+                )
             }
 
+            // 底部重置时间
             let fiveHourDuration = splitWindows.flatMap { formatRemainingDuration($0.fiveHour.resetText) }
             let weeklyResetRaw = splitWindows.flatMap { WidgetFormatter.formatResetText($0.weekly.resetText) }
             let rightReset = (weeklyResetRaw != nil && weeklyResetRaw != "--") ? weeklyResetRaw! : reset
@@ -221,7 +240,7 @@ struct MultiProviderWidgetView: View {
                 HStack(alignment: .center, spacing: 2.5) {
                     if let fiveHourDuration, showLeftReset {
                         Text(fiveHourDuration)
-                            .font(.system(size: 8, weight: .medium, design: .rounded))
+                            .font(.system(size: resetFontSize, weight: .medium, design: .rounded))
                     }
 
                     Spacer(minLength: 0)
@@ -229,9 +248,9 @@ struct MultiProviderWidgetView: View {
                     if showRightReset {
                         HStack(spacing: 2) {
                             Image(systemName: "clock.arrow.circlepath")
-                                .font(.system(size: 7, weight: .medium))
+                                .font(.system(size: resetIconSize, weight: .medium))
                             Text(rightReset)
-                                .font(.system(size: 8, weight: .medium, design: .rounded))
+                                .font(.system(size: resetFontSize, weight: .medium, design: .rounded))
                         }
                     }
                 }
@@ -240,10 +259,42 @@ struct MultiProviderWidgetView: View {
         }
     }
 
+    private func dualSegmentedBars(
+        fiveHour: QuotaWindowSummary,
+        weekly: QuotaWindowSummary,
+        provider: QuotaProvider
+    ) -> some View {
+        let halfSegments = max(3, segmentCount / 2)
+        let fivePercent = min(100, max(0, fiveHour.remainingPercent ?? 0))
+        let weekPercent = min(100, max(0, weekly.remainingPercent ?? 0))
+        let fiveColor = ClipBarTheme.widgetBarColor(for: provider, remaining: fiveHour.remainingPercent)
+        let weekColor = ClipBarTheme.widgetBarColor(for: provider, remaining: weekly.remainingPercent)
+
+        return HStack(alignment: .center, spacing: 6) {
+            SegmentedPillBar(
+                percent: fivePercent,
+                totalSegments: halfSegments,
+                barHeight: barHeight,
+                segmentSpacing: segmentSpacing,
+                cornerRadius: cornerRadius,
+                activeColor: fiveColor
+            )
+            SegmentedPillBar(
+                percent: weekPercent,
+                totalSegments: halfSegments,
+                barHeight: barHeight,
+                segmentSpacing: segmentSpacing,
+                cornerRadius: cornerRadius,
+                activeColor: weekColor
+            )
+        }
+    }
+
     private func compactPercent(_ window: QuotaWindowSummary) -> String {
         guard let remaining = window.remainingPercent else { return "--" }
         return "\(Int(min(100, max(0, remaining)).rounded()))%"
     }
+
     private func formatRemainingDuration(_ raw: String?) -> String? {
         guard let text = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty, text != "--" else {
             return nil
@@ -290,66 +341,22 @@ struct MultiProviderWidgetView: View {
             || label.contains("weekly")
     }
 
-    private func dualQuotaBars(
-        fiveHour: QuotaWindowSummary,
-        weekly: QuotaWindowSummary,
-        provider: QuotaProvider
-    ) -> some View {
-        HStack(alignment: .center, spacing: 6) {
-            compactQuotaBar(fiveHour, label: "5h", provider: provider)
-            compactQuotaBar(
-                weekly,
-                label: WidgetFormatter.isChinese ? "周" : "Week",
-                provider: provider
-            )
+    private var exhaustedOrEmptyView: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "battery.0percent")
+                .font(.system(size: 22))
+                .foregroundStyle(ClipBarTheme.warning)
+
+            Text("额度已消耗殆尽")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.primary)
+
+            Text(entry.snapshot.providers.isEmpty ? "还没有配置渠道 Token" : "所有渠道额度均已用尽")
+                .font(.system(size: 9.5))
+                .foregroundStyle(Color.secondary)
+                .multilineTextAlignment(.center)
         }
-    }
-
-    private func compactQuotaBar(
-        _ window: QuotaWindowSummary,
-        label: String,
-        provider: QuotaProvider
-    ) -> some View {
-        let percent = min(100, max(0, window.remainingPercent ?? 0))
-        let color = ClipBarTheme.widgetBarColor(for: provider, remaining: window.remainingPercent)
-
-        return GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
-                    .frame(height: barHeight)
-
-                RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                    .fill(color)
-                    .frame(
-                        width: percent <= 0 ? 0 : max(barRadius, geo.size.width * CGFloat(percent / 100.0)),
-                        height: barHeight
-                    )
-            }
-        }
-        .frame(height: barHeight)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label) \(compactPercent(window))")
-    }
-    private var placeholderRow: some View {
-        VStack(alignment: .leading, spacing: 2.5) {
-            HStack(spacing: 5) {
-                Circle()
-                    .fill(Color.primary.opacity(0.08))
-                    .frame(width: glyphSize, height: glyphSize)
-
-                Spacer()
-
-                Text("--%")
-                    .font(.system(size: percentFontSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.secondary)
-            }
-
-            RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                .fill(Color.primary.opacity(0.08))
-                .frame(height: barHeight)
-        }
+        .padding(14)
     }
 
     private var unconfiguredView: some View {
@@ -371,12 +378,9 @@ struct MultiProviderWidgetView: View {
     }
 }
 
-// Backward compatibility
-typealias TripleProviderWidgetView = MultiProviderWidgetView
-
-// 1. 三渠道小组件
-struct TripleProviderWidget: Widget {
-    static let kind: String = "TripleProviderWidget"
+/// 新版：分段胶囊多渠道概览小组件
+struct SegmentedMultiProviderWidget: Widget {
+    static let kind: String = "SegmentedMultiProviderWidget"
 
     init() {}
 
@@ -385,36 +389,12 @@ struct TripleProviderWidget: Widget {
             kind: Self.kind,
             provider: MultiProviderTimelineProvider()
         ) { entry in
-            MultiProviderWidgetView(entry: entry, maxCount: 3)
+            SegmentedMultiProviderWidgetView(entry: entry, maxCount: 3)
                 .containerBackground(Color(uiColor: .systemBackground), for: .widget)
         }
-        .configurationDisplayName("三渠道概览")
-        .description("展示主力 3 个 AI 渠道的额度与健康状态。")
+        .configurationDisplayName("多渠道胶囊概览")
+        .description("采用分段微胶囊视觉设计，清晰展示最多 3 个可用 AI 渠道的额度与健康状态。")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }
-}
-
-#Preview("3渠道") {
-    MultiProviderWidgetView(
-        entry: MultiProviderEntry(date: Date(), snapshot: .preview),
-        maxCount: 3
-    )
-    .frame(width: 155, height: 155)
-}
-
-#Preview("4渠道") {
-    MultiProviderWidgetView(
-        entry: MultiProviderEntry(date: Date(), snapshot: .preview),
-        maxCount: 4
-    )
-    .frame(width: 155, height: 155)
-}
-
-#Preview("5渠道") {
-    MultiProviderWidgetView(
-        entry: MultiProviderEntry(date: Date(), snapshot: .preview),
-        maxCount: 5
-    )
-    .frame(width: 155, height: 155)
 }

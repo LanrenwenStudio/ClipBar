@@ -4,6 +4,8 @@ struct StatusSegment: Identifiable, Equatable, Sendable {
     var id: String
     var provider: QuotaProvider
     var remaining: Double?
+    var fiveHourRemaining: Double?
+    var weeklyRemaining: Double?
     var accountCount: Int
 
     var percent: Int? {
@@ -16,7 +18,20 @@ struct StatusSegment: Identifiable, Equatable, Sendable {
     }
 
     var title: String {
-        "\(provider.displayName) \(percentText)"
+        "\(provider.displayName) \(displayTitle)"
+    }
+
+    var displayTitle: String {
+        switch (fiveHourRemaining, weeklyRemaining) {
+        case let (fiveHour?, weekly?):
+            "\(Int(fiveHour.rounded()))% / \(Int(weekly.rounded()))%"
+        case let (fiveHour?, nil):
+            "\(Int(fiveHour.rounded()))%"
+        case let (nil, weekly?):
+            "\(Int(weekly.rounded()))%"
+        case (nil, nil):
+            percentText
+        }
     }
 }
 
@@ -60,14 +75,25 @@ enum StatusBarSummary {
             guard !hidden.contains(provider.rawValue) else { return nil }
             let rows = enabledAccounts(in: accounts.filter { $0.account.provider == provider }, settings: settings)
             guard !rows.isEmpty else { return nil }
+            let display = settings.statusQuotaDisplay(for: provider)
+            let fiveHourRemaining = exactPooledRemaining(in: rows, window: .fiveHour, settings: settings)
+            let weeklyRemaining = exactPooledRemaining(in: rows, window: .weekly, settings: settings)
+            let shownFiveHour = display == .weekly ? nil : fiveHourRemaining
+            let shownWeekly = display == .fiveHour ? nil : weeklyRemaining
             let remaining = pooledRemaining(in: rows, preferredWindow: settings.statusQuotaWindow, settings: settings)
-            if settings.hideEmptyStatusItems, let remaining, remaining <= 0 {
+            if settings.hideEmptyStatusItems,
+               let emptyCheckRemaining = display == .fiveHour ? (fiveHourRemaining ?? remaining)
+                   : display == .weekly ? (weeklyRemaining ?? remaining)
+                   : remaining,
+               emptyCheckRemaining <= 0 {
                 return nil
             }
             return StatusSegment(
                 id: provider.rawValue,
                 provider: provider,
                 remaining: remaining,
+                fiveHourRemaining: shownFiveHour,
+                weeklyRemaining: shownWeekly,
                 accountCount: rows.count
             )
         }
@@ -81,15 +107,51 @@ enum StatusBarSummary {
         preferredWindow: StatusQuotaWindow = .fiveHour,
         settings: AppSettings? = nil
     ) -> Double? {
+        pooledRemaining(
+            in: rows,
+            preferredWindow: preferredWindow,
+            settings: settings,
+            preferFiveHourForProvider: true
+        )
+    }
+
+    static func exactPooledRemaining(
+        in rows: [AccountQuota],
+        window: StatusQuotaWindow,
+        settings: AppSettings? = nil
+    ) -> Double? {
+        pooledRemaining(
+            in: rows,
+            preferredWindow: window,
+            settings: settings,
+            preferFiveHourForProvider: false
+        )
+    }
+
+    private static func pooledRemaining(
+        in rows: [AccountQuota],
+        preferredWindow: StatusQuotaWindow,
+        settings: AppSettings?,
+        preferFiveHourForProvider: Bool
+    ) -> Double? {
         let enabled = enabledAccounts(in: rows, settings: settings)
         guard !enabled.isEmpty else { return nil }
         var remainingUnits = 0.0
+        var hasData = false
         for row in enabled {
-            let window = effectiveWindow(for: row.account.provider, configured: preferredWindow)
-            let percents = selectedPercents(in: row.snapshot.windows, preferredWindow: window)
+            let window = preferFiveHourForProvider
+                ? effectiveWindow(for: row.account.provider, configured: preferredWindow)
+                : preferredWindow
+            let percents = selectedPercents(
+                in: row.snapshot.windows,
+                preferredWindow: window,
+                allowFallback: preferFiveHourForProvider
+            )
             guard !percents.isEmpty else { continue }
+            hasData = true
             remainingUnits += percents.reduce(0, +) / Double(percents.count) / 100
         }
+        if !preferFiveHourForProvider, !hasData { return nil }
         return remainingUnits / Double(enabled.count) * 100
     }
 
@@ -107,7 +169,8 @@ enum StatusBarSummary {
 
     private static func selectedPercents(
         in windows: [QuotaWindow],
-        preferredWindow: StatusQuotaWindow
+        preferredWindow: StatusQuotaWindow,
+        allowFallback: Bool = true
     ) -> [Double] {
         let preferredIDs: Set<String>
         let fallbackIDs: Set<String>
@@ -123,10 +186,11 @@ enum StatusBarSummary {
         if let preferred = windows.first(where: { preferredIDs.contains($0.id) })?.remainingPercent {
             return [preferred]
         }
-        if let fallback = windows.first(where: { fallbackIDs.contains($0.id) })?.remainingPercent {
+        if allowFallback,
+           let fallback = windows.first(where: { fallbackIDs.contains($0.id) })?.remainingPercent {
             return [fallback]
         }
-        return windows.compactMap(\.remainingPercent)
+        return allowFallback ? windows.compactMap(\.remainingPercent) : []
     }
 
     static func title(from segments: [StatusSegment], fallback: String) -> String {

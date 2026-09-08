@@ -16,7 +16,7 @@ struct SettingsView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: ClipBarTheme.spacingM) {
-                    SettingsSection(
+                            SettingsSection(
                         title: L10n.t("连接", "Connection")
                     ) {
                         connectionFields
@@ -25,11 +25,13 @@ struct SettingsView: View {
                     SettingsSection(
                         title: L10n.t("显示与偏好", "Display & Preferences"),
                         subtitle: L10n.t(
-                            "控制启动方式、额度汇总与账号排序规则。",
-                            "Control startup, quota summary, and account sorting behavior."
+                            "控制启动方式、默认额度显示与账号排序规则。",
+                            "Control startup, default quota display, and account sorting behavior."
                         )
                     ) {
                         launchAtLoginRow
+                        Divider()
+                        statusQuotaDisplayRow
                         Divider()
                         statusQuotaWindowRow
                         Divider()
@@ -71,18 +73,23 @@ struct SettingsView: View {
             }
 
             SettingsField(title: L10n.t("管理地址", "Management URL")) {
-                TextField("http://127.0.0.1:8317", text: $draft.baseURL)
+                TextField(L10n.t("可选", "Optional"), text: $draft.baseURL)
                     .modifier(ClipBarFieldStyle(isFocused: focusedField == .url))
                     .focused($focusedField, equals: .url)
             }
 
-            SettingsField(title: L10n.t("管理密钥", "Management key")) {
+            SettingsField(title: L10n.t("后端地址", "Backend URL")) {
+                TextField(AppSettings.backendURL, text: $draft.backendURL)
+                    .modifier(ClipBarFieldStyle(isFocused: false))
+            }
+
+            SettingsField(title: L10n.t("后端访问令牌", "Backend access token")) {
                 HStack(spacing: ClipBarTheme.spacingS) {
                     Group {
                         if revealsKey {
-                            TextField(L10n.t("粘贴 secret-key", "Paste secret-key"), text: $draft.managementKey)
+                            TextField(L10n.t("粘贴访问令牌", "Paste access token"), text: $draft.backendAccessToken)
                         } else {
-                            SecureField(L10n.t("粘贴 secret-key", "Paste secret-key"), text: $draft.managementKey)
+                            SecureField(L10n.t("粘贴访问令牌", "Paste access token"), text: $draft.backendAccessToken)
                         }
                     }
                     .modifier(ClipBarFieldStyle(isFocused: focusedField == .key))
@@ -95,7 +102,25 @@ struct SettingsView: View {
                 }
             }
 
+            SettingsField(title: L10n.t("CLIProxyAPI 地址", "CLIProxyAPI URL")) {
+                TextField(L10n.t("可选", "Optional"), text: $draft.baseURL)
+                    .modifier(ClipBarFieldStyle(isFocused: false))
+            }
+
+            SettingsField(title: L10n.t("CLIProxyAPI 密钥", "CLIProxyAPI key")) {
+                SecureField(L10n.t("仅直连模式使用", "Used only for direct mode"), text: $draft.managementKey)
+                    .modifier(ClipBarFieldStyle(isFocused: false))
+            }
+
             RefreshIntervalPicker(seconds: $draft.refreshSeconds)
+                .overlay(alignment: .bottomLeading) {
+                    if let error = model.backendSettingsSyncError, draft.usesBackend {
+                        Text(L10n.t("同步刷新设置失败：\(error)", "Could not sync refresh setting: \(error)"))
+                            .font(.system(size: 9))
+                            .foregroundStyle(ClipBarTheme.danger)
+                            .offset(y: 18)
+                    }
+                }
         }
     }
 
@@ -134,6 +159,39 @@ struct SettingsView: View {
             .labelsHidden()
             .toggleStyle(.switch)
             .controlSize(.small)
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var statusQuotaDisplayRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "menubar.arrow.down.rectangle")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L10n.t("状态栏额度", "Menu bar quota"))
+                    .font(.system(size: 11.5, weight: .medium))
+                Text(L10n.t("选择显示 5 小时额度、周额度，或两者都显示。", "Choose the 5-hour quota, weekly quota, or both."))
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            Picker(L10n.t("状态栏额度", "Menu bar quota"), selection: statusQuotaDisplayBinding) {
+                Text(L10n.t("5 小时", "5h"))
+                    .tag(StatusQuotaDisplay.fiveHour)
+                Text(L10n.t("周", "Week"))
+                    .tag(StatusQuotaDisplay.weekly)
+                Text(L10n.t("两者", "Both"))
+                    .tag(StatusQuotaDisplay.both)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .controlSize(.small)
+            .frame(width: 160)
         }
         .padding(.vertical, 2)
     }
@@ -252,6 +310,10 @@ struct SettingsView: View {
                         isVisible: Binding(
                             get: { model.isStatusItemVisible(provider) },
                             set: { model.setStatusItemVisible(provider, visible: $0) }
+                        ),
+                        quotaDisplay: Binding(
+                            get: { model.settings.statusQuotaDisplayOverride(for: provider) },
+                            set: { model.setStatusQuotaDisplay($0, for: provider) }
                         )
                     )
                     .listRowInsets(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))
@@ -289,6 +351,13 @@ struct SettingsView: View {
 
     private var providerListHeight: CGFloat {
         CGFloat(max(model.orderedPreferenceProviders.count, 1)) * 32 + 6
+    }
+
+    private var statusQuotaDisplayBinding: Binding<StatusQuotaDisplay> {
+        Binding(
+            get: { model.settings.statusQuotaDisplay },
+            set: { model.setStatusQuotaDisplay($0) }
+        )
     }
 
     private var statusQuotaWindowBinding: Binding<StatusQuotaWindow> {
@@ -357,6 +426,10 @@ struct SettingsView: View {
 
     private func prepareDraft() {
         draft = model.settings
+        if draft.usesBackend {
+            draft.baseURL = model.settings.baseURL
+            draft.managementKey = model.settings.managementKey
+        }
         draft.refreshSeconds = draft.clampedRefreshSeconds
         focusedField = nil
     }
