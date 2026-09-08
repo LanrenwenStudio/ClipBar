@@ -176,6 +176,15 @@ final class AppModel {
         settings.statusQuotaDisplay(for: provider)
     }
 
+    func setProviderCustomColor(_ hex: String?, for provider: QuotaProvider) {
+        if let hex {
+            settings.providerCustomColors[provider.rawValue] = hex
+        } else {
+            settings.providerCustomColors.removeValue(forKey: provider.rawValue)
+        }
+        persistPreferences()
+    }
+
     func setStatusQuotaDisplay(_ display: StatusQuotaDisplay?, for provider: QuotaProvider) {
         if let display {
             settings.statusQuotaDisplayOverrides[provider.rawValue] = display

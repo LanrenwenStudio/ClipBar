@@ -21,6 +21,7 @@ struct ServerSettingsView: View {
                 connectionSection
                 diagnosisSection
                 behaviorSection
+                providerColorsSection
                 aboutSection
             }
             .navigationTitle(L10n.t("服务设置", "Server Settings"))
@@ -269,6 +270,39 @@ struct ServerSettingsView: View {
 
         } header: {
             Text(L10n.t("偏好", "Preferences"))
+        }
+    }
+
+    // MARK: - Provider Colors Section
+
+    private var providerColorsSection: some View {
+        Section {
+            ForEach(model.orderedPreferenceProviders, id: \.self) { provider in
+                HStack(spacing: 8) {
+                    ProviderGlyph(provider: provider, size: 14)
+                    Text(provider.displayName)
+                        .font(.body)
+
+                    Spacer()
+
+                    ColorPicker("", selection: Binding(
+                        get: {
+                            if let hex = draft.customColorHex(for: provider), let col = Color(hex: hex) {
+                                return col
+                            }
+                            return ClipBarTheme.brandColor(for: provider)
+                        },
+                        set: { newColor in
+                            draft.providerCustomColors[provider.rawValue] = newColor.hexString
+                        }
+                    ), supportsOpacity: false)
+                    .labelsHidden()
+                }
+            }
+        } header: {
+            Text(L10n.t("渠道进度条颜色", "Provider Bar Colors"))
+        } footer: {
+            Text(L10n.t("为各个渠道自定义额度条颜色，不设置则使用默认颜色。", "Customize the bar color for each provider."))
         }
     }
 

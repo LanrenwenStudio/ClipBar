@@ -61,7 +61,7 @@ struct LockScreenQuotaView: View {
             case .accessoryCircular:
                 LockScreenCircularView(provider: provider)
             case .accessoryRectangular:
-                LockScreenRectangularView(provider: provider, snapshot: entry.snapshot)
+                LockScreenRectangularView(provider: provider, snapshot: entry.snapshot, entryDate: entry.date)
             case .accessoryInline:
                 LockScreenInlineView(provider: provider)
             default:
@@ -115,6 +115,7 @@ private struct LockScreenCircularView: View {
 private struct LockScreenRectangularView: View {
     let provider: ProviderWidgetData
     let snapshot: ClipBarWidgetSnapshot
+    let entryDate: Date
 
     private var percent: Double {
         min(100, max(0, provider.remainingPercent ?? 0))
@@ -132,47 +133,66 @@ private struct LockScreenRectangularView: View {
         provider.windows.first { $0.id.contains("week") }
     }
 
+    private var freshnessText: String {
+        WidgetFormatter.freshnessText(from: snapshot.lastUpdated)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            // 顶行：图标 + 名称 + 百分比
-            HStack(spacing: 4) {
-                ProviderGlyph(provider: provider.provider, size: 12)
+        VStack(alignment: .leading, spacing: 2) {
+            // 顶行：图标 + 渠道名 + 账号数 + 刷新时间 + 主百分比
+            HStack(alignment: .center, spacing: 3) {
+                ProviderGlyph(provider: provider.provider, size: 11)
                 Text(displayName)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                Spacer()
+                    .font(.system(size: 11.5, weight: .bold, design: .rounded))
+
+                Spacer(minLength: 2)
+
+                // 账号数 + 更新时间（保持清晰的主前景色）
+                HStack(spacing: 3) {
+                    Text("\(snapshot.healthyAccounts)/\(snapshot.totalAccounts)")
+                        .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+                    Text("·")
+                    Text(freshnessText)
+                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                }
+                .foregroundStyle(.primary)
+
+                Spacer(minLength: 2)
+
                 Text("\(Int(percent.rounded()))%")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 12.5, weight: .heavy, design: .rounded))
             }
 
-            // 中间行：进度条（锁屏下使用系统原生风格 Gauge）
+            // 中间行：紧凑进度条
             Gauge(value: percent, in: 0...100) {
                 EmptyView()
             }
             .gaugeStyle(.accessoryLinearCapacity)
 
-            // 底行：次要信息（重置时间或双窗口额度）
+            // 底行：双窗口明细或重置时间
             HStack(spacing: 4) {
                 if let fiveHour = fiveHourWindow?.remainingPercent,
                    let weekly = weeklyWindow?.remainingPercent {
                     Text("5h: \(Int(fiveHour.rounded()))%")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
                     Text("·")
                         .foregroundStyle(.tertiary)
                     Text("周: \(Int(weekly.rounded()))%")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
-                } else if let reset = provider.nearestResetText, reset != "--" {
-                    Image(systemName: "clock")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.secondary)
-                    Text(reset)
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("\(snapshot.healthyAccounts)/\(snapshot.totalAccounts) 账号可用")
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+
+                if let reset = provider.nearestResetText, reset != "--" {
+                    HStack(spacing: 1.5) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 7.5))
+                        Text(reset)
+                            .font(.system(size: 9.0, design: .rounded))
+                    }
+                    .foregroundStyle(.secondary)
                 }
             }
         }

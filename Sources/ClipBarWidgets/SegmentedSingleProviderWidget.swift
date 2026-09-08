@@ -10,7 +10,32 @@ struct SegmentedSingleProviderQuotaCard: View {
     let entry: SingleProviderEntry
     let provider: ProviderWidgetData
 
+    private var splitWindows: (fiveHour: QuotaWindowSummary, weekly: QuotaWindowSummary)? {
+        guard let fiveHour = provider.windows.first(where: isFiveHourWindow),
+              let weekly = provider.windows.first(where: isWeeklyWindow)
+        else {
+            return nil
+        }
+        return (fiveHour, weekly)
+    }
+
+    private func isFiveHourWindow(_ window: QuotaWindowSummary) -> Bool {
+        let label = window.label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return label == "5h" || label.contains("5h") || label.contains("five-hour") || label.contains("five hour")
+    }
+
+    private func isWeeklyWindow(_ window: QuotaWindowSummary) -> Bool {
+        let label = window.label.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return label == "7d"
+            || label.contains("周")
+            || label == "week"
+            || label.contains("weekly")
+    }
+
     private var displayWindow: QuotaWindowSummary? {
+        if let split = splitWindows {
+            return split.weekly
+        }
         guard let target = provider.remainingPercent else {
             return provider.windows.first
         }
@@ -33,23 +58,22 @@ struct SegmentedSingleProviderQuotaCard: View {
         let percent = remainingPercent
         let activeColor = ClipBarTheme.widgetBarColor(for: provider.provider, remaining: percent)
         let reset = WidgetFormatter.formatResetText(displayWindow?.resetText ?? provider.nearestResetText)
-        let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "可用配额" : "Quota")
 
         VStack(alignment: .leading, spacing: 0) {
-            // 1. Top Header Row: [Provider Icon] [Provider Name] <--- Spacer ---> [↻ 8分钟前]
-            HStack(alignment: .center, spacing: 5.5) {
+            // 1. 顶部栏：[图标] [渠道名] <--- 弹性空白 ---> [↻ 8分钟前]
+            HStack(alignment: .center, spacing: 6) {
                 ProviderGlyph(provider: provider.provider, size: 16, tint: .primary)
                     .frame(width: 16, height: 16)
 
                 Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
                     .foregroundStyle(Color.primary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.75)
 
                 Spacer(minLength: 4)
 
-                HStack(spacing: 2.5) {
+                HStack(spacing: 3) {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 8, weight: .semibold))
                     Text(freshnessText)
@@ -59,47 +83,97 @@ struct SegmentedSingleProviderQuotaCard: View {
             }
             .padding(.top, 1)
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 6)
 
-            // 2. Subtitle / Window Label
-            Text(label)
-                .font(.system(size: 10.5, weight: .medium))
-                .foregroundStyle(Color.secondary)
-                .lineLimit(1)
+            // 2. 核心大数值区域：浑然一体的层次排版
+            if let split = splitWindows {
+                let fivePercent = split.fiveHour.remainingPercent ?? 0
+                let weekPercent = split.weekly.remainingPercent ?? 0
 
-            // 3. Hero Metric Big Percentage
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(Int(percent.rounded()))")
-                    .font(.system(size: 32, weight: .heavy, design: .rounded))
-                    .foregroundStyle(Color.primary)
-                Text("%")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.secondary)
+                VStack(alignment: .leading, spacing: 3) {
+                    // 主视角：周额度超大数字 + 附属 5小时额度精致胶囊标签
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text("\(Int(weekPercent.rounded()))")
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color.primary)
+                        Text("%")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.secondary)
+
+                        Spacer(minLength: 6)
+
+                        // 5小时额度精致胶囊标签（额度偏低时变色提醒小巧思）
+                        let isLow = fivePercent <= 20
+                        let isCritical = fivePercent <= 10
+                        let tintColor: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
+                        let bgFill: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
+
+                        HStack(spacing: 3) {
+                            Text("5h")
+                                .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                                .foregroundStyle(isLow ? tintColor : Color.secondary)
+                            Text("\(Int(fivePercent.rounded()))%")
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                .foregroundStyle(tintColor)
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(bgFill)
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(isLow ? tintColor.opacity(0.35) : Color.clear, lineWidth: 0.6)
+                        )
+                        .alignmentGuide(.firstTextBaseline) { d in d[.bottom] - 3 }
+                    }
+
+                    // 辅助提示小字
+                    Text(WidgetFormatter.isChinese ? "周额度剩余" : "Weekly quota left")
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(Color.secondary)
+                }
+            } else {
+                let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "可用配额" : "Quota")
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
+                        Text("\(Int(percent.rounded()))")
+                            .font(.system(size: 34, weight: .heavy, design: .rounded))
+                            .foregroundStyle(Color.primary)
+                        Text("%")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(Color.secondary)
+                    }
+
+                    Text(label)
+                        .font(.system(size: 9.5, weight: .medium))
+                        .foregroundStyle(Color.secondary)
+                }
             }
-            .padding(.top, -2)
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 6)
 
-            // 4. Segmented Slat Bar (细长垂直微圆角竖线阵列：26条细长竖线自适应撑满卡片100%全宽)
+            // 3. 分段进度条：细致高密度竖条阵列（32段、高度16pt、细密间隔2.2pt、微倒角1.0pt）
             SegmentedPillBar(
                 percent: percent,
-                totalSegments: 26,
-                barHeight: 26.0,
+                totalSegments: 32,
+                barHeight: 16.0,
                 segmentSpacing: 2.2,
-                cornerRadius: 1.2,
+                cornerRadius: 1.0,
                 activeColor: activeColor
             )
 
-            Spacer(minLength: 5)
+            Spacer(minLength: 6)
 
-            // 5. Bottom Info Row: [Reset Time] <--- Spacer ---> [Account Count]
+            // 4. 底部状态行：[重置时间] <--- Spacer ---> [账号数量]
             HStack(alignment: .center, spacing: 4) {
                 if reset != "--" {
-                    HStack(spacing: 2.5) {
+                    HStack(spacing: 3) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 7.5, weight: .medium))
+                            .font(.system(size: 8, weight: .medium))
                         Text(reset)
-                            .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
                     }
                     .foregroundStyle(Color.secondary)
                 }
@@ -107,11 +181,11 @@ struct SegmentedSingleProviderQuotaCard: View {
                 Spacer(minLength: 4)
 
                 if provider.accountCount > 0 {
-                    HStack(spacing: 2.5) {
+                    HStack(spacing: 3) {
                         Image(systemName: "person.2.fill")
-                            .font(.system(size: 7.5, weight: .medium))
+                            .font(.system(size: 8, weight: .medium))
                         Text(WidgetFormatter.isChinese ? "\(provider.accountCount)个账号" : "\(provider.accountCount) accts")
-                            .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                            .font(.system(size: 9, weight: .medium, design: .rounded))
                     }
                     .foregroundStyle(Color.secondary)
                 }

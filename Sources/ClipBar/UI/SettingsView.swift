@@ -15,44 +15,34 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: ClipBarTheme.spacingM) {
-                            SettingsSection(
-                        title: L10n.t("连接", "Connection")
-                    ) {
+                VStack(alignment: .leading, spacing: 18) {
+                    SettingsSection(title: L10n.t("服务与连接", "Service & Connection")) {
                         connectionFields
                     }
 
-                    SettingsSection(
-                        title: L10n.t("显示与偏好", "Display & Preferences"),
-                        subtitle: L10n.t(
-                            "控制启动方式、默认额度显示与账号排序规则。",
-                            "Control startup, default quota display, and account sorting behavior."
-                        )
-                    ) {
-                        launchAtLoginRow
-                        Divider()
-                        statusQuotaDisplayRow
-                        Divider()
-                        statusQuotaWindowRow
-                        Divider()
-                        sortByRemainingRow
+                    SettingsSection(title: L10n.t("菜单栏与显示", "Menu Bar & Display")) {
+                        VStack(spacing: 10) {
+                            launchAtLoginRow
+                            Divider().opacity(0.6)
+                            statusQuotaDisplayRow
+                            Divider().opacity(0.6)
+                            statusQuotaWindowRow
+                            Divider().opacity(0.6)
+                            sortByRemainingRow
+                            Divider().opacity(0.6)
+                            hideEmptyRow
+                        }
                     }
 
-                    SettingsSection(
-                        title: L10n.t("状态栏", "Menu bar"),
-                        subtitle: L10n.t(
-                            "选择渠道、调整顺序，并控制哪些内容显示在菜单栏。",
-                            "Choose providers, reorder them, and control what appears in the menu bar."
-                        )
-                    ) {
-                        hideEmptyRow
-                        Divider()
+                    SettingsSection(title: L10n.t("渠道排序与外观", "Providers & Appearance")) {
                         providerContent
                     }
                 }
-                .padding(ClipBarTheme.spacingL)
+                .padding(16)
             }
             .scrollIndicators(.hidden)
+
+            Divider()
 
             footer
         }
@@ -63,19 +53,13 @@ struct SettingsView: View {
     }
 
     private var connectionFields: some View {
-        VStack(alignment: .leading, spacing: ClipBarTheme.spacingM) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(L10n.t("连接状态", "Connection status"))
-                    .font(.caption.weight(.semibold))
+                Text(L10n.t("服务状态", "Status"))
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
                 Spacer()
                 ConnectionBadge(title: settingsConnectionText, color: settingsConnectionColor)
-            }
-
-            SettingsField(title: L10n.t("管理地址", "Management URL")) {
-                TextField(L10n.t("可选", "Optional"), text: $draft.baseURL)
-                    .modifier(ClipBarFieldStyle(isFocused: focusedField == .url))
-                    .focused($focusedField, equals: .url)
             }
 
             SettingsField(title: L10n.t("后端地址", "Backend URL")) {
@@ -83,13 +67,13 @@ struct SettingsView: View {
                     .modifier(ClipBarFieldStyle(isFocused: false))
             }
 
-            SettingsField(title: L10n.t("后端访问令牌", "Backend access token")) {
+            SettingsField(title: L10n.t("访问令牌", "Token")) {
                 HStack(spacing: ClipBarTheme.spacingS) {
                     Group {
                         if revealsKey {
-                            TextField(L10n.t("粘贴访问令牌", "Paste access token"), text: $draft.backendAccessToken)
+                            TextField(L10n.t("后端 Token", "Token"), text: $draft.backendAccessToken)
                         } else {
-                            SecureField(L10n.t("粘贴访问令牌", "Paste access token"), text: $draft.backendAccessToken)
+                            SecureField(L10n.t("后端 Token", "Token"), text: $draft.backendAccessToken)
                         }
                     }
                     .modifier(ClipBarFieldStyle(isFocused: focusedField == .key))
@@ -102,23 +86,13 @@ struct SettingsView: View {
                 }
             }
 
-            SettingsField(title: L10n.t("CLIProxyAPI 地址", "CLIProxyAPI URL")) {
-                TextField(L10n.t("可选", "Optional"), text: $draft.baseURL)
-                    .modifier(ClipBarFieldStyle(isFocused: false))
-            }
-
-            SettingsField(title: L10n.t("CLIProxyAPI 密钥", "CLIProxyAPI key")) {
-                SecureField(L10n.t("仅直连模式使用", "Used only for direct mode"), text: $draft.managementKey)
-                    .modifier(ClipBarFieldStyle(isFocused: false))
-            }
-
             RefreshIntervalPicker(seconds: $draft.refreshSeconds)
                 .overlay(alignment: .bottomLeading) {
                     if let error = model.backendSettingsSyncError, draft.usesBackend {
-                        Text(L10n.t("同步刷新设置失败：\(error)", "Could not sync refresh setting: \(error)"))
+                        Text(L10n.t("同步失败：\(error)", "Sync failed: \(error)"))
                             .font(.system(size: 9))
                             .foregroundStyle(ClipBarTheme.danger)
-                            .offset(y: 18)
+                            .offset(y: 16)
                     }
                 }
         }
@@ -127,30 +101,16 @@ struct SettingsView: View {
     private var launchAtLoginRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "macwindow.badge.plus")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(model.launchAtLoginStatus.isRegistered ? Color.blue : Color.secondary.opacity(0.7))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.t("登录时启动", "Launch at login"))
-                    .font(.system(size: 11.5, weight: .medium))
-
-                Text(launchAtLoginDescription)
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let error = model.launchAtLoginError {
-                    Text(error)
-                        .font(.system(size: 9.5))
-                        .foregroundStyle(ClipBarTheme.danger)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
+            Text(L10n.t("开机自启", "Launch at login"))
+                .font(.system(size: 12, weight: .medium))
 
             Spacer(minLength: 8)
 
             Toggle(
-                L10n.t("登录时启动", "Launch at login"),
+                L10n.t("开机自启", "Launch at login"),
                 isOn: Binding(
                     get: { model.launchAtLoginStatus.isRegistered },
                     set: { model.setLaunchAtLogin($0) }
@@ -160,91 +120,66 @@ struct SettingsView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
         }
-        .padding(.vertical, 2)
     }
 
     private var statusQuotaDisplayRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "menubar.arrow.down.rectangle")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(Color.secondary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.t("状态栏额度", "Menu bar quota"))
-                    .font(.system(size: 11.5, weight: .medium))
-                Text(L10n.t("选择显示 5 小时额度、周额度，或两者都显示。", "Choose the 5-hour quota, weekly quota, or both."))
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(L10n.t("状态栏显示", "Status bar"))
+                .font(.system(size: 12, weight: .medium))
 
             Spacer(minLength: 8)
 
-            Picker(L10n.t("状态栏额度", "Menu bar quota"), selection: statusQuotaDisplayBinding) {
-                Text(L10n.t("5 小时", "5h"))
-                    .tag(StatusQuotaDisplay.fiveHour)
-                Text(L10n.t("周", "Week"))
-                    .tag(StatusQuotaDisplay.weekly)
-                Text(L10n.t("两者", "Both"))
-                    .tag(StatusQuotaDisplay.both)
+            Picker(L10n.t("状态栏显示", "Status bar"), selection: statusQuotaDisplayBinding) {
+                Text(L10n.t("5小时", "5h")).tag(StatusQuotaDisplay.fiveHour)
+                Text(L10n.t("周额度", "Week")).tag(StatusQuotaDisplay.weekly)
+                Text(L10n.t("双额度", "Both")).tag(StatusQuotaDisplay.both)
             }
             .labelsHidden()
             .pickerStyle(.segmented)
             .controlSize(.small)
-            .frame(width: 160)
+            .frame(width: 150)
         }
-        .padding(.vertical, 2)
     }
 
     private var statusQuotaWindowRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(Color.secondary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.t("汇总窗口", "Summary window"))
-                    .font(.system(size: 11.5, weight: .medium))
-                Text(statusQuotaWindowDescription)
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(L10n.t("汇总基准", "Summary base"))
+                .font(.system(size: 12, weight: .medium))
 
             Spacer(minLength: 8)
 
-            Picker(L10n.t("汇总窗口", "Summary window"), selection: statusQuotaWindowBinding) {
-                Text(L10n.t("5 小时", "5 hours"))
-                    .tag(StatusQuotaWindow.fiveHour)
-                Text(L10n.t("周额度", "Weekly"))
-                    .tag(StatusQuotaWindow.weekly)
+            Picker(L10n.t("汇总基准", "Summary base"), selection: statusQuotaWindowBinding) {
+                Text(L10n.t("5小时", "5h")).tag(StatusQuotaWindow.fiveHour)
+                Text(L10n.t("周额度", "Week")).tag(StatusQuotaWindow.weekly)
             }
             .labelsHidden()
             .pickerStyle(.segmented)
             .controlSize(.small)
-            .frame(width: 130)
+            .frame(width: 120)
         }
-        .padding(.vertical, 2)
     }
+
     private var sortByRemainingRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "arrow.up.arrow.down")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(Color.secondary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.t("按剩余额度优先排序", "Sort by remaining quota"))
-                    .font(.system(size: 11.5, weight: .medium))
-                Text(L10n.t("在账号列表中，剩余额度更高的账号排在前面（置顶账号始终优先）。", "Display accounts with higher remaining quota first (pinned accounts remain on top)."))
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(L10n.t("按剩余额度从高到低排序", "Sort accounts by remaining"))
+                .font(.system(size: 12, weight: .medium))
 
             Spacer(minLength: 8)
 
             Toggle(
-                L10n.t("按剩余额度优先排序", "Sort by remaining quota"),
+                L10n.t("按剩余额度从高到低排序", "Sort accounts by remaining"),
                 isOn: Binding(
                     get: { model.settings.sortByRemainingQuota },
                     set: { model.setSortByRemainingQuota($0) }
@@ -254,29 +189,21 @@ struct SettingsView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
         }
-        .padding(.vertical, 2)
     }
-
 
     private var hideEmptyRow: some View {
         HStack(spacing: 8) {
             Image(systemName: "eye.slash")
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundStyle(Color.secondary)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L10n.t("隐藏空额度渠道", "Hide empty providers"))
-                    .font(.system(size: 11.5, weight: .medium))
-                Text(L10n.t("剩余额度为 0 时，不在菜单栏显示该渠道。", "Hide providers from the menu bar when their remaining quota is 0."))
-                    .font(.system(size: 9.5))
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text(L10n.t("耗尽时自动隐藏渠道", "Hide provider when empty"))
+                .font(.system(size: 12, weight: .medium))
 
             Spacer(minLength: 8)
 
             Toggle(
-                L10n.t("隐藏空额度渠道", "Hide empty providers"),
+                L10n.t("耗尽时自动隐藏渠道", "Hide provider when empty"),
                 isOn: Binding(
                     get: { model.settings.hideEmptyStatusItems },
                     set: { model.setHideEmptyStatusItems($0) }
@@ -286,7 +213,6 @@ struct SettingsView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
         }
-        .padding(.vertical, 2)
     }
 
     @ViewBuilder
@@ -314,6 +240,10 @@ struct SettingsView: View {
                         quotaDisplay: Binding(
                             get: { model.settings.statusQuotaDisplayOverride(for: provider) },
                             set: { model.setStatusQuotaDisplay($0, for: provider) }
+                        ),
+                        customColorHex: Binding(
+                            get: { model.settings.customColorHex(for: provider) },
+                            set: { model.setProviderCustomColor($0, for: provider) }
                         )
                     )
                     .listRowInsets(EdgeInsets(top: 3, leading: 0, bottom: 3, trailing: 0))

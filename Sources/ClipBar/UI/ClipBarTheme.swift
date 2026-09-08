@@ -124,7 +124,10 @@ enum ClipBarTheme {
         }
         return charcoal
     }
-    static func progressColor(for provider: QuotaProvider, remaining: Double?) -> Color {
+    static func progressColor(for provider: QuotaProvider, remaining: Double?, customHex: String? = nil) -> Color {
+        if let customHex, let customColor = Color(hex: customHex) {
+            return customColor
+        }
         guard let remaining else { return .secondary }
         if remaining <= QuotaDisplayScale.exhausted || remaining <= QuotaDisplayScale.step {
             return danger
@@ -150,7 +153,6 @@ enum ClipBarTheme {
         guard let remaining else { return "--" }
         return "\(Int(remaining.rounded()))%"
     }
-
 #if os(macOS)
     private static func adaptiveColor(light: NSColor, dark: NSColor) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
@@ -164,4 +166,40 @@ enum ClipBarTheme {
         })
     }
 #endif
+}
+
+extension Color {
+    init?(hex: String) {
+        var clean = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.hasPrefix("#") {
+            clean.removeFirst()
+        }
+        guard clean.count == 6, let intVal = UInt64(clean, radix: 16) else {
+            return nil
+        }
+        let r = Double((intVal >> 16) & 0xFF) / 255.0
+        let g = Double((intVal >> 8) & 0xFF) / 255.0
+        let b = Double(intVal & 0xFF) / 255.0
+        self.init(red: r, green: g, blue: b)
+    }
+
+    var hexString: String {
+#if os(macOS)
+        guard let rgbColor = NSColor(self).usingColorSpace(.sRGB) else { return "#007AFF" }
+        let r = Int((rgbColor.redComponent * 255).rounded())
+        let g = Int((rgbColor.greenComponent * 255).rounded())
+        let b = Int((rgbColor.blueComponent * 255).rounded())
+        return String(format: "#%02X%02X%02X", max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b)))
+#else
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        let ir = Int((r * 255).rounded())
+        let ig = Int((g * 255).rounded())
+        let ib = Int((b * 255).rounded())
+        return String(format: "#%02X%02X%02X", max(0, min(255, ir)), max(0, min(255, ig)), max(0, min(255, ib)))
+#endif
+    }
 }

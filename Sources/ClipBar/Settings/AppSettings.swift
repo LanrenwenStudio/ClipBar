@@ -63,6 +63,7 @@ struct AppSettings: Equatable, Sendable {
     var statusQuotaWindow: StatusQuotaWindow
     var statusQuotaDisplay: StatusQuotaDisplay
     var statusQuotaDisplayOverrides: [String: StatusQuotaDisplay]
+    var providerCustomColors: [String: String]
     var disabledAccountKeys: [String]
     var pinnedAccountKeys: [String]
     var sortByRemainingQuota: Bool
@@ -82,6 +83,7 @@ struct AppSettings: Equatable, Sendable {
         statusQuotaWindow: .fiveHour,
         statusQuotaDisplay: .fiveHour,
         statusQuotaDisplayOverrides: [:],
+        providerCustomColors: [:],
         disabledAccountKeys: [],
         pinnedAccountKeys: [],
         sortByRemainingQuota: true,
@@ -141,6 +143,10 @@ struct AppSettings: Equatable, Sendable {
 
     func statusQuotaDisplayOverride(for provider: QuotaProvider) -> StatusQuotaDisplay? {
         statusQuotaDisplayOverrides[provider.rawValue]
+    }
+
+    func customColorHex(for provider: QuotaProvider) -> String? {
+        providerCustomColors[provider.rawValue]
     }
 
     func isProviderHidden(_ provider: QuotaProvider) -> Bool {

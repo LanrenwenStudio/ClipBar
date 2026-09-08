@@ -14,5 +14,6 @@ struct ClipBarWidgetsBundle: WidgetBundle {
 
         // 锁屏微型小组件 (Accessory Widgets)
         LockScreenQuotaWidget()
+        LockScreenMultiProviderWidget()
     }
 }

@@ -6,6 +6,7 @@ struct SettingsProviderRow: View {
     let remaining: Double?
     @Binding var isVisible: Bool
     @Binding var quotaDisplay: StatusQuotaDisplay?
+    @Binding var customColorHex: String?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -47,9 +48,14 @@ struct SettingsProviderRow: View {
             .pickerStyle(.menu)
             .controlSize(.small)
 
+            ColorPicker("", selection: colorBinding, supportsOpacity: false)
+                .labelsHidden()
+                .scaleEffect(0.8)
+                .frame(width: 22, height: 22)
+
             Text(ClipBarTheme.percentText(remaining))
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(ClipBarTheme.progressColor(for: provider, remaining: remaining))
+                .foregroundStyle(ClipBarTheme.progressColor(for: provider, remaining: remaining, customHex: customColorHex))
         }
         .padding(.vertical, 2)
         .frame(minHeight: 28)
@@ -59,6 +65,20 @@ struct SettingsProviderRow: View {
         Binding(
             get: { quotaDisplay },
             set: { quotaDisplay = $0 }
+        )
+    }
+
+    private var colorBinding: Binding<Color> {
+        Binding(
+            get: {
+                if let customColorHex, let col = Color(hex: customColorHex) {
+                    return col
+                }
+                return ClipBarTheme.brandColor(for: provider)
+            },
+            set: { newColor in
+                customColorHex = newColor.hexString
+            }
         )
     }
 

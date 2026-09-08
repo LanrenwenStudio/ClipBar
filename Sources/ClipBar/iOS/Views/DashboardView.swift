@@ -454,8 +454,9 @@ private struct ProviderGridCard: View {
 
     @ViewBuilder
     private func quotaRow(label: String, remaining: Double?) -> some View {
-        let color = ClipBarTheme.progressColor(for: provider, remaining: remaining)
-        VStack(alignment: .leading, spacing: 4) {
+        let customHex = model.settings.customColorHex(for: provider)
+        let color = ClipBarTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
+        VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(label)
                     .font(.caption2)
@@ -468,10 +469,10 @@ private struct ProviderGridCard: View {
 
             SegmentedPillBar(
                 percent: remaining ?? 0,
-                totalSegments: 22,
-                barHeight: 12,
-                segmentSpacing: 1.8,
-                cornerRadius: 0.9,
+                totalSegments: 36,
+                barHeight: 9.0,
+                segmentSpacing: 2.2,
+                cornerRadius: 1.0,
                 activeColor: color,
                 inactiveColor: Color.primary.opacity(0.08)
             )

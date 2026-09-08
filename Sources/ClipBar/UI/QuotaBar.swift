@@ -21,21 +21,23 @@ struct QuotaBar: View {
                 }
             }
 
-            GeometryReader { geo in
+            let percent = max(0, min(100, window.remainingPercent ?? 0))
+            GeometryReader { proxy in
+                let width = proxy.size.width
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                        .fill(Color.primary.opacity(0.08))
-                        .frame(height: 6.5)
+                    RoundedRectangle(cornerRadius: 1.75, style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+                        .frame(height: 3.5)
 
-                    RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                        .fill(barColor)
-                        .frame(
-                            width: fill <= 0 ? 0 : max(1.5, min(geo.size.width, geo.size.width * fill)),
-                            height: 6.5
-                        )
+                    if percent > 0 {
+                        RoundedRectangle(cornerRadius: 1.75, style: .continuous)
+                            .fill(tint)
+                            .frame(width: max(2, width * CGFloat(percent / 100.0)), height: 3.5)
+                    }
                 }
+                .frame(height: 3.5, alignment: .center)
             }
-            .frame(height: 6.5)
+            .frame(height: 3.5)
             .accessibilityHidden(true)
         }
         .accessibilityElement(children: .ignore)

@@ -5,6 +5,7 @@ struct ProviderSummaryCard: View {
     let accountCount: Int
     let remaining: Double?
     let weeklyRemaining: Double?
+    var customHex: String? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -53,21 +54,25 @@ struct ProviderSummaryCard: View {
 
     @ViewBuilder
     private func quotaBar(for value: Double?, color: Color) -> some View {
-        GeometryReader { geo in
+        let percent = max(0, min(100, value ?? 0))
+        GeometryReader { proxy in
+            let width = proxy.size.width
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
-                    .frame(height: 6.5)
+                // 底轨：极细轻量线条（3.5pt 带来精致高级感）
+                RoundedRectangle(cornerRadius: 1.75, style: .continuous)
+                    .fill(Color.primary.opacity(0.06))
+                    .frame(height: 3.5)
 
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .fill(color)
-                    .frame(
-                        width: value == nil ? 0 : max(1.5, min(geo.size.width, geo.size.width * fill(for: value))),
-                        height: 6.5
-                    )
+                // 填充层：细腻平滑条
+                if percent > 0 {
+                    RoundedRectangle(cornerRadius: 1.75, style: .continuous)
+                        .fill(color)
+                        .frame(width: max(2, width * CGFloat(percent / 100.0)), height: 3.5)
+                }
             }
+            .frame(height: 3.5, alignment: .center)
         }
-        .frame(height: 6.5)
+        .frame(height: 3.5)
         .accessibilityHidden(true)
     }
 
@@ -76,11 +81,11 @@ struct ProviderSummaryCard: View {
     }
 
     private var percentColor: Color {
-        ClipBarTheme.progressColor(for: provider, remaining: remaining)
+        ClipBarTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
     }
 
     private var weeklyColor: Color {
-        ClipBarTheme.progressColor(for: provider, remaining: weeklyRemaining)
+        ClipBarTheme.progressColor(for: provider, remaining: weeklyRemaining, customHex: customHex)
     }
 
     private var accessibilityText: String {

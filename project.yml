@@ -35,6 +35,8 @@ targets:
         buildPhase: resources
       - path: Sources/ClipBar/Networking/QuotaBackendClient.swift
         type: file
+      - path: Sources/ClipBarWidgets/SegmentedPillBar.swift
+        type: file
     settings:
       base:
         PRODUCT_NAME: ClipBar

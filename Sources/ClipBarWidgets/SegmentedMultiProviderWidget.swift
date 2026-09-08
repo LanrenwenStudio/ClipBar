@@ -36,33 +36,33 @@ struct SegmentedMultiProviderWidgetView: View {
 
     private var titleFontSize: CGFloat {
         switch count {
-        case 1: return 13.0
-        case 2: return 11.5
-        default: return 10.5
+        case 1: return 13.5
+        case 2: return 12.0
+        default: return 11.5
         }
     }
 
     private var percentFontSize: CGFloat {
         switch count {
-        case 1: return 11.0
-        case 2: return 10.0
-        default: return 9.5
+        case 1: return 11.5
+        case 2: return 10.5
+        default: return 10.0
         }
     }
 
     private var barHeight: CGFloat {
         switch count {
-        case 1: return 24.0
-        case 2: return 16.0
-        default: return 12.0
+        case 1: return 16.0
+        case 2: return 12.0
+        default: return 9.5
         }
     }
 
     private var segmentCount: Int {
         switch count {
-        case 1: return 26
-        case 2: return 24
-        default: return 22
+        case 1: return 32
+        case 2: return 28
+        default: return 26
         }
     }
 
@@ -70,38 +70,34 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 2.2
         case 2: return 2.0
-        default: return 1.8
+        default: return 2.0
         }
     }
 
     private var cornerRadius: CGFloat {
-        switch count {
-        case 1: return 1.2
-        case 2: return 1.0
-        default: return 0.8
-        }
+        return 1.0
     }
 
     private var rowSpacing: CGFloat {
         switch count {
         case 1: return 0
-        case 2: return 12.0
-        default: return 6.0
+        case 2: return 10.0
+        default: return 6.5
         }
     }
 
     private var providerInnerSpacing: CGFloat {
         switch count {
-        case 1: return 5.0
-        case 2: return 3.5
-        default: return 2.5
+        case 1: return 4.0
+        case 2: return 3.0
+        default: return 2.0
         }
     }
 
     private var resetFontSize: CGFloat {
         switch count {
         case 1: return 9.0
-        case 2: return 8.5
+        case 2: return 8.0
         default: return 7.5
         }
     }
@@ -109,7 +105,7 @@ struct SegmentedMultiProviderWidgetView: View {
     private var resetIconSize: CGFloat {
         switch count {
         case 1: return 8.0
-        case 2: return 7.5
+        case 2: return 7.0
         default: return 6.5
         }
     }
@@ -181,23 +177,35 @@ struct SegmentedMultiProviderWidgetView: View {
                 Spacer(minLength: 4)
 
                 if let splitWindows {
-                    HStack(alignment: .center, spacing: 1.5) {
-                        Text(compactPercent(splitWindows.fiveHour))
-                            .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                    let fivePercent = splitWindows.fiveHour.remainingPercent ?? 0
+                    let isLow = fivePercent <= 20
+                    let isCritical = fivePercent <= 10
+                    let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
+                    let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
-                        Text("/")
-                            .font(.system(size: max(7.0, percentFontSize - 2.5), weight: .regular, design: .rounded))
-                            .foregroundStyle(Color.secondary.opacity(0.45))
-                            .fixedSize()
-
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text(compactPercent(splitWindows.weekly))
-                            .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
+                            .font(.system(size: percentFontSize + 1.0, weight: .bold, design: .rounded))
                             .foregroundStyle(Color.primary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+
+                        HStack(spacing: 1.5) {
+                            Text("5h")
+                                .font(.system(size: max(6.5, percentFontSize - 3.5), weight: .semibold, design: .rounded))
+                                .foregroundStyle(isLow ? badgeTint : Color.secondary)
+                            Text(compactPercent(splitWindows.fiveHour))
+                                .font(.system(size: max(7.5, percentFontSize - 2.0), weight: .medium, design: .monospaced))
+                                .foregroundStyle(badgeTint.opacity(isLow ? 1.0 : 0.8))
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1.5)
+                        .background(
+                            Capsule()
+                                .fill(badgeBg)
+                        )
+                        .overlay(
+                            Capsule()
+                                .strokeBorder(isLow ? badgeTint.opacity(0.35) : Color.clear, lineWidth: 0.5)
+                        )
                     }
                     .layoutPriority(1)
                 } else {
@@ -210,23 +218,18 @@ struct SegmentedMultiProviderWidgetView: View {
                 }
             }
 
-            // 进度条：垂直细长竖线阵列
-            if let splitWindows {
-                dualSegmentedBars(
-                    fiveHour: splitWindows.fiveHour,
-                    weekly: splitWindows.weekly,
-                    provider: p.provider
-                )
-            } else {
-                SegmentedPillBar(
-                    percent: percent,
-                    totalSegments: segmentCount,
-                    barHeight: barHeight,
-                    segmentSpacing: segmentSpacing,
-                    cornerRadius: cornerRadius,
-                    activeColor: rowColor
-                )
-            }
+            // 进度条：统一采用单渠道同款完整的整条分段条（与头部周额度呼应，更舒展更具统一感）
+            let mainPercent = splitWindows?.weekly.remainingPercent ?? percent
+            let barColor = ClipBarTheme.widgetBarColor(for: p.provider, remaining: mainPercent)
+
+            SegmentedPillBar(
+                percent: min(100, max(0, mainPercent ?? 0)),
+                totalSegments: segmentCount,
+                barHeight: barHeight,
+                segmentSpacing: segmentSpacing,
+                cornerRadius: cornerRadius,
+                activeColor: barColor
+            )
 
             // 底部重置时间
             let fiveHourDuration = splitWindows.flatMap { formatRemainingDuration($0.fiveHour.resetText) }

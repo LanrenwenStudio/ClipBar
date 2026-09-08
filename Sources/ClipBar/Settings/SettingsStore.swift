@@ -13,6 +13,7 @@ struct SettingsStore {
         static let statusQuotaWindow = "clipbar.statusQuotaWindow"
         static let statusQuotaDisplay = "clipbar.statusQuotaDisplay"
         static let statusQuotaDisplayOverrides = "clipbar.statusQuotaDisplayOverrides"
+        static let providerCustomColors = "clipbar.providerCustomColors"
         static let disabledAccountKeys = "clipbar.disabledAccountKeys"
         static let pinnedAccountKeys = "clipbar.pinnedAccountKeys"
         static let sortByRemainingQuota = "clipbar.sortByRemainingQuota"
@@ -67,6 +68,9 @@ struct SettingsStore {
                 }
             }
         }
+        if let rawColors = defaults.dictionary(forKey: Key.providerCustomColors) as? [String: String] {
+            settings.providerCustomColors = rawColors
+        }
         settings.disabledAccountKeys = defaults.stringArray(forKey: Key.disabledAccountKeys) ?? []
         settings.pinnedAccountKeys = defaults.stringArray(forKey: Key.pinnedAccountKeys) ?? []
         if let rawTheme = defaults.string(forKey: Key.appTheme),
@@ -94,6 +98,7 @@ struct SettingsStore {
             settings.statusQuotaDisplayOverrides.mapValues(\.rawValue),
             forKey: Key.statusQuotaDisplayOverrides
         )
+        defaults.set(settings.providerCustomColors, forKey: Key.providerCustomColors)
         defaults.set(settings.disabledAccountKeys, forKey: Key.disabledAccountKeys)
         defaults.set(settings.pinnedAccountKeys, forKey: Key.pinnedAccountKeys)
         defaults.set(settings.sortByRemainingQuota, forKey: Key.sortByRemainingQuota)

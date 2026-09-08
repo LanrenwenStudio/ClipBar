@@ -177,7 +177,8 @@ struct ProviderDetailView: View {
                         }
                     } else {
                         ForEach(row.snapshot.windows) { window in
-                            QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: provider, remaining: window.remainingPercent))
+                            let customHex = model.settings.customColorHex(for: provider)
+                        QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: provider, remaining: window.remainingPercent, customHex: customHex))
                         }
                     }
                 }

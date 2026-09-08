@@ -15,8 +15,9 @@ struct AccountCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(spacing: 4) {
+                    let customHex = model.settings.customColorHex(for: row.account.provider)
                     ForEach(row.snapshot.windows) { window in
-                        QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: row.account.provider, remaining: window.remainingPercent))
+                        QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: row.account.provider, remaining: window.remainingPercent, customHex: customHex))
                     }
                 }
             }

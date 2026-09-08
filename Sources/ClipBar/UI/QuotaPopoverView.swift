@@ -102,7 +102,8 @@ struct QuotaPopoverView: View {
                     provider: model.visibleProvider,
                     accountCount: model.visibleTabAccounts.count,
                     remaining: pooledRemaining,
-                    weeklyRemaining: weeklyPooledRemaining
+                    weeklyRemaining: weeklyPooledRemaining,
+                    customHex: model.settings.customColorHex(for: model.visibleProvider)
                 )
 
                 ViewThatFits(in: .vertical) {
