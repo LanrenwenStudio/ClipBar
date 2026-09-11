@@ -67,6 +67,9 @@ struct DashboardView: View {
                     showingSettings = true
                 }
             }
+            .task {
+                await model.refresh(force: true, forceBackend: true)
+            }
         }
     }
 

@@ -13,8 +13,15 @@ struct ClipBarIOSApp: App {
                 .preferredColorScheme(model.settings.appTheme.colorScheme)
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background {
+            switch phase {
+            case .active:
+                // iOS may suspend the app while it is in the background, so the
+                // polling task cannot keep the cached dashboard current there.
+                Task { await model.refresh(force: true, forceBackend: true) }
+            case .background:
                 BackgroundRefreshScheduler.schedule()
+            default:
+                break
             }
         }
     }

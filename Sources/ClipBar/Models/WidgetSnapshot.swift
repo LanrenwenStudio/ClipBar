@@ -45,7 +45,27 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
     }
 
     var nearestResetText: String? {
-        let candidates = windows.compactMap(\.resetText).filter { !$0.isEmpty && $0 != "--" }
+        nearestResetText(matching: { _ in true })
+    }
+
+    /// The soonest reset among all accounts' five-hour quota windows.
+    /// The data store already keeps the nearest reset for each window label;
+    /// this selects the nearest one again at widget render time.
+    var nearestFiveHourResetText: String? {
+        nearestResetText { label in
+            let normalized = label.lowercased()
+            return normalized.contains("5h")
+                || normalized.contains("5-hour")
+                || normalized.contains("5 小时")
+                || normalized.contains("5小时")
+        }
+    }
+
+    private func nearestResetText(matching predicate: (String) -> Bool) -> String? {
+        let candidates = windows
+            .filter { predicate($0.label) }
+            .compactMap(\.resetText)
+            .filter { !$0.isEmpty && $0 != "--" }
         return candidates.min { lhs, rhs in
             parseResetDuration(lhs) < parseResetDuration(rhs)
         }

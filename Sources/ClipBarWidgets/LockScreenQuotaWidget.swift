@@ -297,7 +297,7 @@ private struct LockScreenRectangularView: View {
                 HStack(spacing: 4) {
                     Spacer(minLength: 0)
 
-                    if let reset = provider.nearestResetText, reset != "--" {
+                    if let reset = provider.nearestFiveHourResetText ?? provider.nearestResetText, reset != "--" {
                         HStack(spacing: 1.5) {
                             Image(systemName: "clock")
                                 .font(.system(size: 7.5))

@@ -54,8 +54,9 @@ struct MenuBarStatusLabel: View {
                         .font(.system(size: 11.5, weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .foregroundStyle(badgeColor)
-                    Text("5h")
+                    Text(segment.fiveHourResetText ?? "--")
                         .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                        .monospacedDigit()
                         .foregroundStyle(isLow ? badgeColor : Color.white.opacity(0.85))
                 }
                 .padding(.horizontal, 4.5)

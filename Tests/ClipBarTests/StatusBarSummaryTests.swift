@@ -37,6 +37,27 @@ struct StatusBarSummaryTests {
         #expect(segment?.weeklyRemaining == 80)
     }
 
+    @Test("Status bar uses the nearest five-hour reset across accounts")
+    func usesNearestFiveHourReset() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [80], windowIDs: ["5h"], resetTexts: ["3h 12m"]),
+            row(id: "c2", provider: .codex, remaining: [70], windowIDs: ["5h"], resetTexts: ["1h 48m"])
+        ]
+
+        let segment = StatusBarSummary.segments(from: rows, settings: .default).first
+        #expect(segment?.fiveHourResetText == "1h")
+
+        let shortReset = row(
+            id: "c3",
+            provider: .codex,
+            remaining: [60],
+            windowIDs: ["5h"],
+            resetTexts: ["56m"]
+        )
+        let shortSegment = StatusBarSummary.segments(from: [shortReset], settings: .default).first
+        #expect(shortSegment?.fiveHourResetText == "1h")
+    }
+
     @Test("Provider quota display override selects its own menu bar value")
     func selectsProviderQuotaDisplayOverride() {
         let rows = [
@@ -152,7 +173,8 @@ struct StatusBarSummaryTests {
         provider: QuotaProvider,
         remaining: [Double],
         disabled: Bool = false,
-        windowIDs: [String] = []
+        windowIDs: [String] = [],
+        resetTexts: [String?] = []
     ) -> AccountQuota {
         AccountQuota(
             account: AuthAccount(
@@ -174,7 +196,8 @@ struct StatusBarSummaryTests {
                 planType: nil,
                 windows: remaining.enumerated().map { index, value in
                     let id = windowIDs.indices.contains(index) ? windowIDs[index] : "w\(index)"
-                    return QuotaWindow(id: id, label: id, remainingPercent: value, resetText: nil)
+                    let resetText = resetTexts.indices.contains(index) ? resetTexts[index] : nil
+                    return QuotaWindow(id: id, label: id, remainingPercent: value, resetText: resetText)
                 },
                 error: remaining.isEmpty ? "none" : nil
             )

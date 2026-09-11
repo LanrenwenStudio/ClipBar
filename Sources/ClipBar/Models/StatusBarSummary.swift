@@ -5,6 +5,7 @@ struct StatusSegment: Identifiable, Equatable, Sendable {
     var provider: QuotaProvider
     var remaining: Double?
     var fiveHourRemaining: Double?
+    var fiveHourResetText: String?
     var weeklyRemaining: Double?
     var accountCount: Int
 
@@ -80,6 +81,7 @@ enum StatusBarSummary {
             let weeklyRemaining = exactPooledRemaining(in: rows, window: .weekly, settings: settings)
             let shownFiveHour = display == .weekly ? nil : fiveHourRemaining
             let shownWeekly = display == .fiveHour ? nil : weeklyRemaining
+            let fiveHourResetText = display == .weekly ? nil : nearestResetText(in: rows, window: .fiveHour)
             let remaining = pooledRemaining(in: rows, preferredWindow: settings.statusQuotaWindow, settings: settings)
             if settings.hideEmptyStatusItems,
                let emptyCheckRemaining = display == .fiveHour ? (fiveHourRemaining ?? remaining)
@@ -93,6 +95,7 @@ enum StatusBarSummary {
                 provider: provider,
                 remaining: remaining,
                 fiveHourRemaining: shownFiveHour,
+                fiveHourResetText: fiveHourResetText,
                 weeklyRemaining: shownWeekly,
                 accountCount: rows.count
             )
@@ -165,6 +168,40 @@ enum StatusBarSummary {
         default:
             configured
         }
+    }
+
+    private static func nearestResetText(
+        in rows: [AccountQuota],
+        window: StatusQuotaWindow
+    ) -> String? {
+        let ids: Set<String> = switch window {
+        case .fiveHour: ["5h", "five-hour", "5-hour"]
+        case .weekly: ["7d", "week", "weekly", "seven-day"]
+        }
+        let resetTexts = rows
+            .flatMap(\.snapshot.windows)
+            .filter { ids.contains($0.id.lowercased()) }
+            .compactMap(\.resetText)
+        guard let raw = resetTexts.min(by: {
+            (resetDurationInSeconds($0) ?? Int.max) < (resetDurationInSeconds($1) ?? Int.max)
+        }), let seconds = resetDurationInSeconds(raw) else {
+            return nil
+        }
+        return "\(max(1, seconds / 3_600))h"
+    }
+
+    private static func resetDurationInSeconds(_ raw: String) -> Int? {
+        let pattern = #"^(?:(\d+)d\s*)?(?:(\d+)h\s*)?(?:(\d+)m)?$"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: raw, range: NSRange(raw.startIndex..., in: raw)),
+              (1...3).contains(where: { match.range(at: $0).location != NSNotFound }) else {
+            return nil
+        }
+        func value(at index: Int) -> Int {
+            guard let range = Range(match.range(at: index), in: raw) else { return 0 }
+            return Int(raw[range]) ?? 0
+        }
+        return value(at: 1) * 86_400 + value(at: 2) * 3_600 + value(at: 3) * 60
     }
 
     private static func selectedPercents(
