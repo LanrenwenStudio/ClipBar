@@ -158,7 +158,7 @@ struct SegmentedMultiProviderWidgetView: View {
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
         let percent = min(100, max(0, p.remainingPercent ?? 0))
-        let rowColor = ClipBarTheme.widgetBarColor(for: p.provider, remaining: percent)
+        let rowColor = AccessDeckTheme.widgetBarColor(for: p.provider, remaining: percent)
         let splitWindows = splitQuotaWindows(for: p)
         let reset = WidgetFormatter.formatResetText(p.nearestResetText ?? p.windows.first?.resetText)
 
@@ -180,8 +180,8 @@ struct SegmentedMultiProviderWidgetView: View {
                     let fivePercent = splitWindows.fiveHour.remainingPercent ?? 0
                     let isLow = fivePercent <= 20
                     let isCritical = fivePercent <= 10
-                    let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
-                    let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
+                    let badgeTint: Color = isCritical ? AccessDeckTheme.danger : (isLow ? AccessDeckTheme.warning : Color.primary)
+                    let badgeBg: Color = isCritical ? AccessDeckTheme.danger.opacity(0.16) : (isLow ? AccessDeckTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
                     HStack(alignment: .bottom, spacing: 3.0) {
                         // [5小时百分比 5h] 紧凑精致胶囊，避免挤占左侧渠道名
@@ -224,7 +224,7 @@ struct SegmentedMultiProviderWidgetView: View {
 
             // 进度条：统一采用单渠道同款完整的整条分段条（与头部周额度呼应，更舒展更具统一感）
             let mainPercent = splitWindows?.weekly.remainingPercent ?? percent
-            let barColor = ClipBarTheme.widgetBarColor(for: p.provider, remaining: mainPercent)
+            let barColor = AccessDeckTheme.widgetBarColor(for: p.provider, remaining: mainPercent)
 
             SegmentedPillBar(
                 percent: min(100, max(0, mainPercent ?? 0)),
@@ -274,8 +274,8 @@ struct SegmentedMultiProviderWidgetView: View {
         let halfSegments = max(3, segmentCount / 2)
         let fivePercent = min(100, max(0, fiveHour.remainingPercent ?? 0))
         let weekPercent = min(100, max(0, weekly.remainingPercent ?? 0))
-        let fiveColor = ClipBarTheme.widgetBarColor(for: provider, remaining: fiveHour.remainingPercent)
-        let weekColor = ClipBarTheme.widgetBarColor(for: provider, remaining: weekly.remainingPercent)
+        let fiveColor = AccessDeckTheme.widgetBarColor(for: provider, remaining: fiveHour.remainingPercent)
+        let weekColor = AccessDeckTheme.widgetBarColor(for: provider, remaining: weekly.remainingPercent)
 
         return HStack(alignment: .center, spacing: 6) {
             SegmentedPillBar(
@@ -352,7 +352,7 @@ struct SegmentedMultiProviderWidgetView: View {
         VStack(spacing: 6) {
             Image(systemName: "battery.0percent")
                 .font(.system(size: 22))
-                .foregroundStyle(ClipBarTheme.warning)
+                .foregroundStyle(AccessDeckTheme.warning)
 
             Text("额度已消耗殆尽")
                 .font(.system(size: 12, weight: .bold, design: .rounded))

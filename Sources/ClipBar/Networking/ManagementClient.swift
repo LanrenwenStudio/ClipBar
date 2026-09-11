@@ -14,20 +14,31 @@ enum ManagementClientError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            L10n.t("先填写 CLIProxyAPI 地址和管理密钥。", "Enter the CLIProxyAPI URL and management key first.")
+            return L10n.t("先填写 CLIProxyAPI 地址和管理密钥。", "Enter the CLIProxyAPI URL and management key first.")
         case .invalidBaseURL:
-            L10n.t("管理地址无效。", "The management URL is invalid.")
+            return L10n.t("管理地址无效。", "The management URL is invalid.")
         case let .httpStatus(code, body):
-            "HTTP \(code): \(body.prefix(160))"
+            let detail = body.trimmingCharacters(in: .whitespacesAndNewlines)
+            return detail.isEmpty ? "HTTP \(code)" : "HTTP \(code): \(detail.prefix(160))"
         case .invalidResponse:
-            L10n.t("管理接口返回了无法解析的数据。", "The management API returned an invalid response.")
+            return L10n.t("管理接口返回了无法解析的数据。", "The management API returned an invalid response.")
         }
     }
 }
 
 struct ManagementClient: Sendable {
     var settings: AppSettings
-    var session: URLSession = .shared
+    private let transport: any HTTPDataClient
+
+    init(settings: AppSettings, session: URLSession = .shared) {
+        self.settings = settings
+        self.transport = URLSessionDataClient(session: session)
+    }
+
+    init(settings: AppSettings, transport: any HTTPDataClient) {
+        self.settings = settings
+        self.transport = transport
+    }
 
     func fetchAuthFiles() async throws -> [[String: Any]] {
         let data = try await get(path: "/v0/management/auth-files")
@@ -47,6 +58,28 @@ struct ManagementClient: Sendable {
             throw ManagementClientError.invalidResponse
         }
         return object
+    }
+
+    func request(
+        path: String,
+        method: String,
+        timeout: TimeInterval = 30,
+        headers: [String: String] = [:],
+        body: Data? = nil
+    ) async throws -> (data: Data, statusCode: Int) {
+        var request = try managementRequest(path: path)
+        request.httpMethod = method
+        request.timeoutInterval = timeout
+        for (name, value) in headers {
+            request.setValue(value, forHTTPHeaderField: name)
+        }
+        request.httpBody = body
+
+        let (data, response) = try await transport.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw ManagementClientError.invalidResponse
+        }
+        return (data, http.statusCode)
     }
 
     func apiCall(
@@ -71,7 +104,7 @@ struct ManagementClient: Sendable {
         }
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await transport.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw ManagementClientError.invalidResponse
         }
@@ -96,16 +129,11 @@ struct ManagementClient: Sendable {
     }
 
     private func get(path: String) async throws -> Data {
-        var request = try managementRequest(path: path)
-        request.httpMethod = "GET"
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw ManagementClientError.invalidResponse
+        let response = try await request(path: path, method: "GET")
+        guard (200..<300).contains(response.statusCode) else {
+            throw ManagementClientError.httpStatus(response.statusCode, String(data: response.data, encoding: .utf8) ?? "")
         }
-        guard (200..<300).contains(http.statusCode) else {
-            throw ManagementClientError.httpStatus(http.statusCode, String(data: data, encoding: .utf8) ?? "")
-        }
-        return data
+        return response.data
     }
 
     private func managementRequest(path: String) throws -> URLRequest {
@@ -119,7 +147,7 @@ struct ManagementClient: Sendable {
         request.timeoutInterval = 30
         request.setValue("Bearer \(settings.normalizedManagementKey)", forHTTPHeaderField: "Authorization")
         request.setValue(settings.normalizedManagementKey, forHTTPHeaderField: "X-Management-Key")
-        request.setValue("ClipBar/0.1", forHTTPHeaderField: "User-Agent")
+        request.setValue("AccessDeck/0.1", forHTTPHeaderField: "User-Agent")
         return request
     }
 

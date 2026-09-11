@@ -43,6 +43,6 @@ struct ProviderTab: View {
     }
 
     private var brand: Color {
-        ClipBarTheme.brandColor(for: provider)
+        AccessDeckTheme.brandColor(for: provider)
     }
 }

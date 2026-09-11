@@ -139,7 +139,7 @@ struct MultiProviderWidgetView: View {
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
         let percent = min(100, max(0, p.remainingPercent ?? 0))
-        let rowColor = ClipBarTheme.widgetBarColor(for: p.provider, remaining: percent)
+        let rowColor = AccessDeckTheme.widgetBarColor(for: p.provider, remaining: percent)
         let splitWindows = splitQuotaWindows(for: p)
         let reset = WidgetFormatter.formatResetText(p.nearestResetText ?? p.windows.first?.resetText)
 
@@ -160,8 +160,8 @@ struct MultiProviderWidgetView: View {
                     let fivePercent = splitWindows.fiveHour.remainingPercent ?? 0
                     let isLow = fivePercent <= 20
                     let isCritical = fivePercent <= 10
-                    let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
-                    let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
+                    let badgeTint: Color = isCritical ? AccessDeckTheme.danger : (isLow ? AccessDeckTheme.warning : Color.primary)
+                    let badgeBg: Color = isCritical ? AccessDeckTheme.danger.opacity(0.16) : (isLow ? AccessDeckTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
                     HStack(alignment: .bottom, spacing: 2.5) {
                         // [5小时百分比 5h] 紧凑胶囊，保护渠道名空间
@@ -329,7 +329,7 @@ struct MultiProviderWidgetView: View {
         provider: QuotaProvider
     ) -> some View {
         let percent = min(100, max(0, window.remainingPercent ?? 0))
-        let color = ClipBarTheme.widgetBarColor(for: provider, remaining: window.remainingPercent)
+        let color = AccessDeckTheme.widgetBarColor(for: provider, remaining: window.remainingPercent)
 
         return GeometryReader { geo in
             ZStack(alignment: .leading) {

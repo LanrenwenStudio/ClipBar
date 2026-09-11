@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import ClipBar
 
+@MainActor
 struct AppSettingsTests {
     @Test("Refresh interval normalizes to supported presets and defaults to 5 minutes")
     func normalizesRefreshInterval() {
@@ -83,6 +84,127 @@ struct AppSettingsTests {
         store.save(settings)
 
         #expect(store.load().statusQuotaWindow == .weekly)
+    }
+
+    @Test("Settings credentials are excluded from the local UserDefaults payload")
+    func settingsCredentialsUseSecretStore() {
+        let suiteName = "ClipBarTests.SettingsStore.Secrets.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let secrets = TestSettingsSecretStore()
+        let store = SettingsStore(defaults: defaults, secretStore: secrets, syncsToCloud: false)
+        var settings = AppSettings.default
+        settings.managementKey = "management-secret"
+        store.save(settings)
+
+        #expect(defaults.string(forKey: "clipbar.managementKey") == nil)
+        #expect(secrets.managementKey == "management-secret")
+        #expect(store.load().managementKey == "management-secret")
+
+        let reloadedStore = SettingsStore(defaults: defaults, secretStore: secrets, syncsToCloud: false)
+        #expect(reloadedStore.load().managementKey == "management-secret")
+    }
+
+    @Test("Cloud sync can be disabled for local tests")
+    func localStoreCanDisableCloudSync() {
+        let suiteName = "ClipBarTests.SettingsStore.NoCloud.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults, syncsToCloud: false)
+        var settings = AppSettings.default
+        settings.baseURL = "http://example.test"
+        store.save(settings)
+
+        #expect(store.load().baseURL == "http://example.test")
+    }
+
+    @Test("Cloud settings adopt only when the incoming timestamp is newer")
+    func adoptsNewerCloudSettingsOnly() {
+        let suiteName = "ClipBarTests.SettingsStore.Cloud.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let cloud = TestSettingsCloudStore()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(
+            defaults: defaults,
+            cloud: cloud,
+            secretStore: TestSettingsSecretStore()
+        )
+        var newer = AppSettings.default
+        newer.baseURL = "http://newer.example.test"
+        newer.refreshSeconds = 600
+        store.save(newer)
+
+        #expect(store.load().baseURL == "http://newer.example.test")
+        #expect(store.load().refreshSeconds == 600)
+
+        var older = AppSettings.default
+        older.baseURL = "http://older.example.test"
+        older.refreshSeconds = 60
+        let olderSettingsData = try! JSONEncoder().encode(CloudSettingsPayload(settings: older))
+        let olderPayloadData = try! JSONEncoder().encode(CloudPayloadForTests(timestamp: 1, data: olderSettingsData))
+        cloud.set(olderPayloadData, forKey: "clipbar.cloud.settings.v1")
+        cloud.synchronize()
+
+        #expect(store.load().baseURL == "http://newer.example.test")
+        #expect(store.load().refreshSeconds == 600)
+    }
+
+    @Test("Cloud settings preserve the local Keychain management key")
+    func cloudSettingsPreserveManagementKey() {
+        let suiteName = "ClipBarTests.SettingsStore.CloudSecret.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let cloud = TestSettingsCloudStore()
+        let secrets = TestSettingsSecretStore()
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let store = SettingsStore(defaults: defaults, cloud: cloud, secretStore: secrets, syncsToCloud: false)
+        var local = AppSettings.default
+        local.baseURL = "http://local.example.test"
+        local.managementKey = "local-management-secret"
+        store.save(local)
+        defaults.removeObject(forKey: "clipbar.settings.updatedAt")
+
+        var cloudSettings = AppSettings.default
+        cloudSettings.baseURL = "http://cloud.example.test"
+        let cloudSettingsData = try! JSONEncoder().encode(CloudSettingsPayload(settings: cloudSettings))
+        let cloudPayloadData = try! JSONEncoder().encode(CloudPayloadForTests(timestamp: 9_999_999_999, data: cloudSettingsData))
+        cloud.set(cloudPayloadData, forKey: "clipbar.cloud.settings.v1")
+        cloud.synchronize()
+        let cloudStore = SettingsStore(defaults: defaults, cloud: cloud, secretStore: secrets)
+
+        let loaded = cloudStore.load()
+        #expect(loaded.baseURL == "http://cloud.example.test")
+        #expect(loaded.managementKey == "local-management-secret")
+        #expect(secrets.managementKey == "local-management-secret")
+    }
+
+    private final class TestSettingsCloudStore: SettingsCloudStore, @unchecked Sendable {
+        let notificationObject: AnyObject = NSObject()
+        private var values: [String: Data] = [:]
+
+        func data(forKey key: String) -> Data? { values[key] }
+        func set(_ data: Data, forKey key: String) { values[key] = data }
+        func synchronize() -> Bool { true }
+    }
+
+    private final class TestSettingsSecretStore: SettingsSecretStore, @unchecked Sendable {
+        var managementKey: String?
+
+        func loadManagementKey() -> String? { managementKey }
+        func saveManagementKey(_ value: String) { managementKey = value.isEmpty ? nil : value }
+        func removeLegacyAccessToken() {}
+    }
+
+    private struct CloudSettingsPayload: Codable {
+        let settings: AppSettings
+    }
+
+    private struct CloudPayloadForTests: Codable {
+        let timestamp: Double
+        let data: Data
     }
 
     @Test("Last selected provider persists in UserDefaults")

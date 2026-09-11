@@ -38,7 +38,7 @@ struct ServerSettingsView: View {
                         dismiss()
                     }
                     .font(.body.weight(.semibold))
-                    .tint(ClipBarTheme.accent)
+                    .tint(AccessDeckTheme.accent)
                     .disabled(!draft.isConfigured)
                 }
             }
@@ -53,49 +53,11 @@ struct ServerSettingsView: View {
     private var connectionSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("后端地址", "Backend URL"))
+                Text(L10n.t("CLIProxyAPI 地址", "CLIProxyAPI URL"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField(AppSettings.backendURL, text: $draft.backendURL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-            }
-            .padding(.vertical, 4)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("后端访问令牌", "Backend Access Token"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                HStack {
-                    if revealsKey {
-                        TextField(L10n.t("已内置后端令牌", "Built-in backend token"), text: $draft.backendAccessToken)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    } else {
-                        SecureField(L10n.t("已内置后端令牌", "Built-in backend token"), text: $draft.backendAccessToken)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                    }
-
-                    Button {
-                        revealsKey.toggle()
-                    } label: {
-                        Image(systemName: revealsKey ? "eye.slash" : "eye")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .padding(.vertical, 4)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("CLIProxyAPI 地址（直连兼容）", "CLIProxyAPI URL (direct fallback)"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                TextField(L10n.t("可选", "Optional"), text: $draft.baseURL)
+                TextField("http://127.0.0.1:8317", text: $draft.baseURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
@@ -113,25 +75,40 @@ struct ServerSettingsView: View {
                     }
                     .padding(.vertical, 4)
                 }
+            }
+            .padding(.vertical, 4)
 
-                Text(L10n.t("仅在未配置 ClipBar 后端时使用。", "Used only when the ClipBar backend is not configured."))
+            VStack(alignment: .leading, spacing: 8) {
+                Text(L10n.t("连接方式", "Connection Mode"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Picker(L10n.t("连接方式", "Connection Mode"), selection: $draft.connectionMode) {
+                    ForEach(QuotaConnectionMode.allCases) { mode in
+                        Label(mode.displayName, systemImage: mode.systemImage).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+
+                Text(draft.connectionMode.description)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .padding(.vertical, 4)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("管理密钥 (Secret Key)", "Management Secret Key"))
+                Text(L10n.t("管理密钥", "Management Key"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
                 HStack {
                     if revealsKey {
-                        TextField(L10n.t("输入远程管理密钥", "Enter secret key"), text: $draft.managementKey)
+                        TextField(L10n.t("输入 CPA 管理密钥", "Enter CPA management key"), text: $draft.managementKey)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } else {
-                        SecureField(L10n.t("输入远程管理密钥", "Enter secret key"), text: $draft.managementKey)
+                        SecureField(L10n.t("输入 CPA 管理密钥", "Enter CPA management key"), text: $draft.managementKey)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     }
@@ -146,16 +123,16 @@ struct ServerSettingsView: View {
             }
             .padding(.vertical, 4)
         } header: {
-            Text(L10n.t("ClipBar 后端", "ClipBar Backend"))
+            Text(L10n.t("CLIProxyAPI 连接", "CLIProxyAPI Connection"))
         } footer: {
-            Text(L10n.t("优先读取后端缓存；后端未配置时继续兼容 CLIProxyAPI 直连。", "Uses the backend snapshot first; keeps direct CLIProxyAPI as a fallback when the backend is not configured."))
+            Text(L10n.t("直连模式由 AccessDeck 探测额度；插件模式读取 CPA 中已安装并启用的 clipbar-quota 插件。", "Direct mode probes quotas from AccessDeck; plugin mode reads the installed and enabled clipbar-quota plugin in CPA."))
         }
     }
 
     private var currentConnectionMethodRow: some View {
         HStack(spacing: 8) {
-            Image(systemName: model.settings.isConfigured ? (model.settings.usesBackend ? "server.rack" : "arrow.left.arrow.right") : "questionmark.circle")
-                .foregroundStyle(model.settings.isConfigured ? ClipBarTheme.accent : .secondary)
+            Image(systemName: model.settings.isConfigured ? model.settings.connectionMode.systemImage : "questionmark.circle")
+                .foregroundStyle(model.settings.isConfigured ? AccessDeckTheme.accent : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.t("当前连接方式", "Current Connection Method"))
                     .font(.caption)
@@ -171,9 +148,7 @@ struct ServerSettingsView: View {
         guard model.settings.isConfigured else {
             return L10n.t("尚未配置", "Not configured")
         }
-        return model.settings.usesBackend
-            ? L10n.t("ClipBar Backend 同步", "ClipBar Backend sync")
-            : L10n.t("CLIProxyAPI 直连", "CLIProxyAPI direct fallback")
+        return model.settings.connectionMode.displayName
     }
 
     // MARK: - Diagnosis Section
@@ -193,9 +168,9 @@ struct ServerSettingsView: View {
                             .padding(.leading, 6)
                     } else {
                         Image(systemName: "bolt.horizontal.circle.fill")
-                            .foregroundStyle(ClipBarTheme.accent)
+                            .foregroundStyle(AccessDeckTheme.accent)
                         Text(L10n.t("测试连接与鉴权", "Test Connection & Auth"))
-                            .foregroundStyle(ClipBarTheme.accent)
+                            .foregroundStyle(AccessDeckTheme.accent)
                             .fontWeight(.medium)
                     }
                 }
@@ -207,11 +182,11 @@ struct ServerSettingsView: View {
                 case .success(let count, let latency):
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundStyle(ClipBarTheme.success)
+                            .foregroundStyle(AccessDeckTheme.success)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L10n.t("连接成功", "Connection Successful"))
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(ClipBarTheme.success)
+                                .foregroundStyle(AccessDeckTheme.success)
                             Text(L10n.t("检测到 \(count) 个账号，耗时 \(latency) ms", "Found \(count) accounts (\(latency) ms)"))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -222,11 +197,11 @@ struct ServerSettingsView: View {
                 case .error(let message):
                     HStack(spacing: 8) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(ClipBarTheme.danger)
+                            .foregroundStyle(AccessDeckTheme.danger)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L10n.t("连接失败", "Connection Failed"))
                                 .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(ClipBarTheme.danger)
+                                .foregroundStyle(AccessDeckTheme.danger)
                             Text(message)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
@@ -256,12 +231,6 @@ struct ServerSettingsView: View {
                     Text(L10n.t("\(minutes) 分钟", "\(minutes) Minutes")).tag(preset)
                 }
             }
-            if let error = model.backendSettingsSyncError, draft.usesBackend {
-                Text(L10n.t("同步刷新设置失败：\(error)", "Could not sync refresh setting: \(error)"))
-                    .font(.caption)
-                    .foregroundStyle(ClipBarTheme.danger)
-            }
-
             Picker(L10n.t("优先额度窗口", "Preferred Window"), selection: $draft.statusQuotaWindow) {
                 Text(L10n.t("5 小时 / 速率限制", "5 Hours / Rate Limit")).tag(StatusQuotaWindow.fiveHour)
                 Text(L10n.t("周额度", "Weekly")).tag(StatusQuotaWindow.weekly)
@@ -290,7 +259,7 @@ struct ServerSettingsView: View {
                             if let hex = draft.customColorHex(for: provider), let col = Color(hex: hex) {
                                 return col
                             }
-                            return ClipBarTheme.brandColor(for: provider)
+                            return AccessDeckTheme.brandColor(for: provider)
                         },
                         set: { newColor in
                             draft.providerCustomColors[provider.rawValue] = newColor.hexString
@@ -324,9 +293,9 @@ struct ServerSettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            Link(destination: URL(string: "https://clipbar.lanrenwen.com")!) {
+            Link(destination: URL(string: "https://accessdeck.lanrenwen.com")!) {
                 HStack {
-                    Text(L10n.t("ClipBar 官方主页", "ClipBar Website"))
+                    Text(L10n.t("AccessDeck 官方主页", "AccessDeck Website"))
                     Spacer()
                     Image(systemName: "arrow.up.right")
                         .font(.caption)
@@ -352,11 +321,10 @@ struct ServerSettingsView: View {
         Task {
             let start = DispatchTime.now()
             do {
-                let rows: [AccountQuota]
-                if testSettings.usesBackend {
-                    rows = try await QuotaBackendClient(settings: testSettings).fetchSnapshot().accounts
-                } else {
-                    rows = try await QuotaService(client: ManagementClient(settings: testSettings)).refresh()
+                let result = try await QuotaConnectionFactory().make(settings: testSettings).refresh(force: true)
+                let rows = result.accounts
+                if let error = result.error {
+                    throw QuotaConnectionError.plugin(error)
                 }
                 let end = DispatchTime.now()
                 let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds

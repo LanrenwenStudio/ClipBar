@@ -2,7 +2,7 @@ import WidgetKit
 import SwiftUI
 
 @main
-struct ClipBarWidgetsBundle: WidgetBundle {
+struct AccessDeckWidgetsBundle: WidgetBundle {
     var body: some Widget {
         // 现有版本（连续实心进度条风格）
         SingleProviderWidget()

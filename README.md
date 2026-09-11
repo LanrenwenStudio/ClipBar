@@ -1,10 +1,10 @@
-# ClipBar
+# AccessDeck
 
-> 官网：[https://clipbar.lanrenwen.com](https://clipbar.lanrenwen.com) · [GitHub Releases](https://github.com/LanrenwenStudio/ClipBar/releases)
+> 官网：[https://accessdeck.lanrenwen.com](https://accessdeck.lanrenwen.com) · [GitHub Releases](https://github.com/LanrenwenStudio/AccessDeck/releases)
 
-**ClipBar** 是一款专为搭配 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 使用的 macOS 原生菜单栏轻量看板。
+**AccessDeck** 是一款专为搭配 [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) 使用的 macOS 原生菜单栏轻量看板。
 
-你在本机使用 CLIProxyAPI 聚合多个 AI 平台（如 ChatGPT Plus/Team、Claude Pro/Team、Grok、Gemini 等）的订阅时，ClipBar 可以在 macOS 顶部菜单栏安静常驻，实时显示各账号的 **5 小时速率限制**、**周额度** 以及 **重置倒计时**，告别写代码写到一半突然遭遇 429 断流。
+你在本机使用 CLIProxyAPI 聚合多个 AI 平台（如 ChatGPT Plus/Team、Claude Pro/Team、Grok、Gemini 等）的订阅时，AccessDeck 可以在 macOS 顶部菜单栏安静常驻，实时显示各账号的 **5 小时速率限制**、**周额度** 以及 **重置倒计时**，告别写代码写到一半突然遭遇 429 断流。
 
 ---
 
@@ -15,27 +15,27 @@
 通过烂人文工作室官方 Tap 仓库一键安装：
 
 ```bash
-brew install --cask LanrenwenStudio/apps/clipbar
+brew install --cask LanrenwenStudio/apps/accessdeck
 ```
 
 后续升级：
 
 ```bash
-brew upgrade --cask clipbar
+brew upgrade --cask accessdeck
 ```
 
 卸载：
 
 ```bash
-brew uninstall --cask clipbar
+brew uninstall --cask accessdeck
 ```
 
 ### 方式二：直接下载 GitHub Releases
 
 直接下载最新的通用 macOS Universal 应用包（Apple Silicon + Intel）：
 
-- ⬇️ **最新版本下载**：[ClipBar.zip (GitHub Releases)](https://github.com/LanrenwenStudio/ClipBar/releases/latest/download/ClipBar.zip)
-- 解压后将 `ClipBar.app` 拖入 `/Applications`（应用程序）文件夹即可。
+- ⬇️ **最新版本下载**：[AccessDeck.zip (GitHub Releases)](https://github.com/LanrenwenStudio/AccessDeck/releases/latest/download/AccessDeck.zip)
+- 解压后将 `AccessDeck.app` 拖入 `/Applications`（应用程序）文件夹即可。
 
 ---
 
@@ -43,7 +43,7 @@ brew uninstall --cask clipbar
 
 ### 第一步：开启 CLIProxyAPI 的管理接口
 
-ClipBar 通过读取 CLIProxyAPI 的 Management API 来获取额度。在使用前，请确保 CLIProxyAPI 的配置文件（通常是 `config.yaml`）中开启了管理接口并设置了密钥：
+AccessDeck 通过读取 CLIProxyAPI 的 Management API 来获取额度。在使用前，请确保 CLIProxyAPI 的配置文件（通常是 `config.yaml`）中开启了管理接口并设置了密钥：
 
 ```yaml
 # CLIProxyAPI config.yaml 示例
@@ -60,9 +60,9 @@ remote-management:
 
 ---
 
-### 第二步：配置 ClipBar
+### 第二步：配置 AccessDeck
 
-1. 启动 **ClipBar.app**，菜单栏会出现 ClipBar 状态图标。
+1. 启动 **AccessDeck.app**，菜单栏会出现 AccessDeck 状态图标。
 2. **右键点击** 菜单栏图标（或在面板底部点击齿轮 ⚙️ 打开偏好设置）：
    - **Management Base URL**：填入管理地址，例如 `http://127.0.0.1:8317`
    - **Secret Key**：填入你在 `config.yaml` 中设置的 `secret-key`
@@ -97,8 +97,8 @@ remote-management:
 
 ## 🔒 隐私与安全性
 
-- **100% 只读**：仅调用 Management API 的查询接口，不启动、不托管、不修改 CLIProxyAPI 进程。
-- **完全本地运行**：管理地址与密钥仅存储在 macOS 本地 `UserDefaults`（`com.lanrenwen.clipbar`），零云端依赖，绝不向任何外部服务器上传凭据。
+- **100% 只读**：仅调用 CPA Management API 与插件查询接口，不启动、不托管、不修改 CLIProxyAPI 进程。
+- **完全本地运行**：CPA 地址与 Management Key 仅存储在本地设置与同步 Keychain 中，零独立 backend 依赖，绝不向任何外部服务器上传凭据。
 
 ---
 
@@ -107,8 +107,8 @@ remote-management:
 本项目使用 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 管理工程配置，纯原生 Swift / SwiftUI 编写：
 
 ```bash
-git clone https://github.com/LanrenwenStudio/ClipBar.git
-cd ClipBar
+git clone https://github.com/LanrenwenStudio/AccessDeck.git
+cd AccessDeck
 xcodegen generate
 xcodebuild -scheme ClipBar -destination 'platform=macOS' test
 ```
@@ -122,5 +122,5 @@ open "$(xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=m
 
 ---
 
-Bundle ID：`com.lanrenwen.clipbar`
+Bundle ID：`com.lanrenwen.clipbar`（保留既有兼容标识）
 反馈与建议：[support@lanrenwen.com](mailto:support@lanrenwen.com) 或提交 GitHub Issue。

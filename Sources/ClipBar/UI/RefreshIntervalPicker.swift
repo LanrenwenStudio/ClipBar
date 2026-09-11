@@ -4,7 +4,7 @@ struct RefreshIntervalPicker: View {
     @Binding var seconds: Int
 
     var body: some View {
-        HStack(spacing: ClipBarTheme.spacingS) {
+        HStack(spacing: AccessDeckTheme.spacingS) {
             Text(L10n.t("刷新间隔", "Refresh interval"))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)

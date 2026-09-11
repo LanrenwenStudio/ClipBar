@@ -1,12 +1,12 @@
-# ClipBar Apple 官方公证与分发配置手册
+# AccessDeck Apple 官方公证与分发配置手册
 
-本文档记录 ClipBar 接入 **Apple Developer ID 签名与苹果官方公证（Notarization）** 所需的 GitHub Secrets 配置说明。后续当你准备为 ClipBar 开启全自动公证时，按此配置即可。
+本文档记录 AccessDeck 接入 **Apple Developer ID 签名与苹果官方公证（Notarization）** 所需的 GitHub Secrets 配置说明。后续当你准备为 AccessDeck 开启全自动公证时，按此配置即可。
 
 ---
 
 ## 🔑 GitHub Secrets 完整清单
 
-在 GitHub 仓库 `LanrenwenStudio/ClipBar` -> **Settings** -> **Secrets and variables** -> **Actions** 中添加以下 Repository Secrets：
+在 GitHub 仓库 `LanrenwenStudio/AccessDeck` -> **Settings** -> **Secrets and variables** -> **Actions** 中添加以下 Repository Secrets：
 
 | Secret 名称 | 说明 | 生成 / 导出方式 |
 | :--- | :--- | :--- |
@@ -21,7 +21,7 @@
 
 ## 🛠️ 本地签名与公证验证命令
 
-如果需要在本地终端手动执行签名与公证，可以在 `ClipBar` 根目录执行：
+如果需要在本地终端手动执行签名与公证，可以在 `AccessDeck` 根目录执行：
 
 ```bash
 DEVID_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db" \
@@ -33,14 +33,14 @@ DISTRIBUTION_MODE=developer-id \
 ```
 
 构建完成后，产物位于 `dist/` 目录：
-- `dist/clipbar-X.Y.Z.dmg`（带 Apple 公证 Ticket 与 `/Applications` 快捷方式）
-- `dist/ClipBar.zip`
+- `dist/accessdeck-X.Y.Z.dmg`（带 Apple 公证 Ticket 与 `/Applications` 快捷方式）
+- `dist/AccessDeck.zip`
 
 ---
 
 ## 🚀 自动发版流程
 
-配置好上述 Secrets 后，后续每次发布新版本只需在 `ClipBar` 仓库执行：
+配置好上述 Secrets 后，后续每次发布新版本只需在 `AccessDeck` 仓库执行：
 
 ```bash
 git tag v0.1.1
@@ -53,4 +53,4 @@ GitHub Actions 将自动完成：
 3. 提交至苹果服务器公证（`xcrun notarytool submit`）
 4. 执行 `xcrun stapler staple` 盖章
 5. 生成 Release 发布 `DMG` 与 `ZIP`
-6. 自动同步更新 `LanrenwenStudio/homebrew-apps` 仓库的 Homebrew Cask
+6. 自动同步更新 `LanrenwenStudio/homebrew-apps` 仓库的 AccessDeck Homebrew Cask

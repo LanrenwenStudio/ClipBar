@@ -47,8 +47,8 @@ struct SettingsView: View {
             footer
         }
         .background(.regularMaterial)
-        .tint(ClipBarTheme.accent)
-        .frame(width: ClipBarTheme.settingsWidth, height: ClipBarTheme.settingsHeight)
+        .tint(AccessDeckTheme.accent)
+        .frame(width: AccessDeckTheme.settingsWidth, height: AccessDeckTheme.settingsHeight)
         .onAppear(perform: prepareDraft)
     }
 
@@ -62,21 +62,38 @@ struct SettingsView: View {
                 ConnectionBadge(title: settingsConnectionText, color: settingsConnectionColor)
             }
 
-            SettingsField(title: L10n.t("后端地址", "Backend URL")) {
-                TextField(AppSettings.backendURL, text: $draft.backendURL)
-                    .modifier(ClipBarFieldStyle(isFocused: false))
+            SettingsField(title: L10n.t("CLIProxyAPI 地址", "CLIProxyAPI URL")) {
+                TextField("http://127.0.0.1:8317", text: $draft.baseURL)
+                    .modifier(AccessDeckFieldStyle(isFocused: focusedField == .url))
+                    .focused($focusedField, equals: .url)
             }
 
-            SettingsField(title: L10n.t("访问令牌", "Token")) {
-                HStack(spacing: ClipBarTheme.spacingS) {
+            SettingsField(title: L10n.t("连接方式", "Connection mode")) {
+                Picker(L10n.t("连接方式", "Connection mode"), selection: $draft.connectionMode) {
+                    ForEach(QuotaConnectionMode.allCases) { mode in
+                        Label(mode.displayName, systemImage: mode.systemImage).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(draft.connectionMode.description)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            SettingsField(title: L10n.t("管理密钥", "Management Key")) {
+                HStack(spacing: AccessDeckTheme.spacingS) {
                     Group {
                         if revealsKey {
-                            TextField(L10n.t("后端 Token", "Token"), text: $draft.backendAccessToken)
+                            TextField(L10n.t("输入 CPA 管理密钥", "Enter CPA management key"), text: $draft.managementKey)
                         } else {
-                            SecureField(L10n.t("后端 Token", "Token"), text: $draft.backendAccessToken)
+                            SecureField(L10n.t("输入 CPA 管理密钥", "Enter CPA management key"), text: $draft.managementKey)
                         }
                     }
-                    .modifier(ClipBarFieldStyle(isFocused: focusedField == .key))
+                    .modifier(AccessDeckFieldStyle(isFocused: focusedField == .key))
                     .focused($focusedField, equals: .key)
 
                     Button(revealKeyTitle, systemImage: revealsKey ? "eye.slash" : "eye", action: toggleKeyVisibility)
@@ -87,14 +104,6 @@ struct SettingsView: View {
             }
 
             RefreshIntervalPicker(seconds: $draft.refreshSeconds)
-                .overlay(alignment: .bottomLeading) {
-                    if let error = model.backendSettingsSyncError, draft.usesBackend {
-                        Text(L10n.t("同步失败：\(error)", "Sync failed: \(error)"))
-                            .font(.system(size: 9))
-                            .foregroundStyle(ClipBarTheme.danger)
-                            .offset(y: 16)
-                    }
-                }
         }
     }
 
@@ -222,7 +231,7 @@ struct SettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, ClipBarTheme.spacingS)
+                .padding(.vertical, AccessDeckTheme.spacingS)
         } else {
             List {
                 ForEach(model.orderedPreferenceProviders, id: \.self) { provider in
@@ -315,11 +324,11 @@ struct SettingsView: View {
         case .unconfigured:
             .secondary
         case .refreshing:
-            ClipBarTheme.accent
+            AccessDeckTheme.accent
         case .failed:
-            ClipBarTheme.danger
+            AccessDeckTheme.danger
         case .idle, .online:
-            ClipBarTheme.success
+            AccessDeckTheme.success
         }
     }
 
@@ -331,15 +340,15 @@ struct SettingsView: View {
         switch model.launchAtLoginStatus {
         case .requiresApproval:
             L10n.t(
-                "已注册，请在系统设置 > 通用 > 登录项中允许 ClipBar。",
-                "Registered. Allow ClipBar in System Settings > General > Login Items."
+                "已注册，请在系统设置 > 通用 > 登录项中允许 AccessDeck。",
+                "Registered. Allow AccessDeck in System Settings > General > Login Items."
             )
         case .notFound:
             L10n.t("当前应用无法注册为登录项。", "This app cannot be registered as a login item.")
         case .enabled:
-            L10n.t("已开启，登录 macOS 后自动显示。", "On. Show ClipBar automatically when you log in to macOS.")
+            L10n.t("已开启，登录 macOS 后自动显示。", "On. Show AccessDeck automatically when you log in to macOS.")
         case .notRegistered:
-            L10n.t("登录 macOS 后自动显示 ClipBar。", "Show ClipBar automatically when you log in to macOS.")
+            L10n.t("登录 macOS 后自动显示 AccessDeck。", "Show AccessDeck automatically when you log in to macOS.")
         }
     }
 
@@ -356,10 +365,6 @@ struct SettingsView: View {
 
     private func prepareDraft() {
         draft = model.settings
-        if draft.usesBackend {
-            draft.baseURL = model.settings.baseURL
-            draft.managementKey = model.settings.managementKey
-        }
         draft.refreshSeconds = draft.clampedRefreshSeconds
         focusedField = nil
     }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ClipBarFieldStyle: ViewModifier {
+struct AccessDeckFieldStyle: ViewModifier {
     let isFocused: Bool
 
     func body(content: Content) -> some View {

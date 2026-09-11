@@ -54,9 +54,9 @@ struct ProviderDetailView: View {
                     Text(L10n.t("有效平均剩余", "Active Avg Remaining"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(ClipBarTheme.percentText(averageRemaining))
+                    Text(AccessDeckTheme.percentText(averageRemaining))
                         .font(.title3.monospacedDigit().weight(.bold))
-                        .foregroundStyle(ClipBarTheme.progressColor(for: provider, remaining: averageRemaining))
+                        .foregroundStyle(AccessDeckTheme.progressColor(for: provider, remaining: averageRemaining))
                 }
 
                 Spacer()
@@ -107,17 +107,17 @@ struct ProviderDetailView: View {
                                 if isPinned {
                                     Image(systemName: "pin.fill")
                                         .font(.caption2)
-                                        .foregroundStyle(ClipBarTheme.accent)
+                                        .foregroundStyle(AccessDeckTheme.accent)
                                 }
                                 Text(accountTitle(row))
                                     .font(.subheadline.weight(.semibold))
                                 if isLocallyDisabled {
                                     Text(L10n.t("已忽略", "Ignored"))
                                         .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(ClipBarTheme.warning)
+                                        .foregroundStyle(AccessDeckTheme.warning)
                                         .padding(.horizontal, 5)
                                         .padding(.vertical, 1)
-                                        .background(ClipBarTheme.warning.opacity(0.12), in: Capsule())
+                                        .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
                                 }
                             }
                             if let email = row.account.email, !email.isEmpty {
@@ -145,7 +145,7 @@ struct ProviderDetailView: View {
                             } label: {
                                 Image(systemName: isPinned ? "pin.fill" : "pin")
                                     .font(.system(size: 11))
-                                    .foregroundStyle(isPinned ? ClipBarTheme.accent : Color.secondary.opacity(0.7))
+                                    .foregroundStyle(isPinned ? AccessDeckTheme.accent : Color.secondary.opacity(0.7))
                                     .frame(width: 26, height: 26)
                                     .background(Color.primary.opacity(0.05), in: Circle())
                             }
@@ -157,7 +157,7 @@ struct ProviderDetailView: View {
                             } label: {
                                 Image(systemName: isLocallyDisabled ? "eye.slash.fill" : "eye")
                                     .font(.system(size: 11))
-                                    .foregroundStyle(isLocallyDisabled ? ClipBarTheme.warning : Color.secondary.opacity(0.7))
+                                    .foregroundStyle(isLocallyDisabled ? AccessDeckTheme.warning : Color.secondary.opacity(0.7))
                                     .frame(width: 26, height: 26)
                                     .background(Color.primary.opacity(0.05), in: Circle())
                             }
@@ -169,7 +169,7 @@ struct ProviderDetailView: View {
                         if let error = row.snapshot.error {
                             Text(error)
                                 .font(.caption)
-                                .foregroundStyle(ClipBarTheme.warning)
+                                .foregroundStyle(AccessDeckTheme.warning)
                         } else {
                             Text(L10n.t("无活跃额度窗口", "No active quota window"))
                                 .font(.caption)
@@ -178,7 +178,7 @@ struct ProviderDetailView: View {
                     } else {
                         ForEach(row.snapshot.windows) { window in
                             let customHex = model.settings.customColorHex(for: provider)
-                        QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: provider, remaining: window.remainingPercent, customHex: customHex))
+                        QuotaBar(window: window, tint: AccessDeckTheme.progressColor(for: provider, remaining: window.remainingPercent, customHex: customHex))
                         }
                     }
                 }
@@ -249,7 +249,7 @@ struct ProviderDetailView: View {
     }
 
     private var healthStatusColor: Color {
-        ClipBarTheme.progressColor(for: provider, remaining: averageRemaining)
+        AccessDeckTheme.progressColor(for: provider, remaining: averageRemaining)
     }
 
     private func triggerHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {

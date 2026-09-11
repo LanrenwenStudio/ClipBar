@@ -2,7 +2,7 @@ import SwiftUI
 
 struct QuotaBar: View {
     let window: QuotaWindow
-    var tint: Color = ClipBarTheme.accent
+    var tint: Color = AccessDeckTheme.accent
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3.5) {
@@ -49,24 +49,24 @@ struct QuotaBar: View {
     }
 
     private var titleText: String {
-        let percent = ClipBarTheme.percentText(window.remainingPercent)
+        let percent = AccessDeckTheme.percentText(window.remainingPercent)
         return L10n.t("\(window.label) 剩余 \(percent)", "\(window.label) \(percent) left")
     }
 
     private var barColor: Color {
-        ClipBarTheme.progressColor(for: .unknown, remaining: window.remainingPercent)
+        AccessDeckTheme.progressColor(for: .unknown, remaining: window.remainingPercent)
     }
 
     private var accessibilityText: String {
         if let resetText = window.resetText {
             return L10n.t(
-                "\(window.label) 剩余 \(ClipBarTheme.percentText(window.remainingPercent))，\(resetText) 后重置",
-                "\(window.label) remaining \(ClipBarTheme.percentText(window.remainingPercent)), resets in \(resetText)"
+                "\(window.label) 剩余 \(AccessDeckTheme.percentText(window.remainingPercent))，\(resetText) 后重置",
+                "\(window.label) remaining \(AccessDeckTheme.percentText(window.remainingPercent)), resets in \(resetText)"
             )
         }
         return L10n.t(
-            "\(window.label) 剩余 \(ClipBarTheme.percentText(window.remainingPercent))",
-            "\(window.label) remaining \(ClipBarTheme.percentText(window.remainingPercent))"
+            "\(window.label) 剩余 \(AccessDeckTheme.percentText(window.remainingPercent))",
+            "\(window.label) remaining \(AccessDeckTheme.percentText(window.remainingPercent))"
         )
     }
 }
@@ -75,11 +75,11 @@ struct QuotaBar: View {
     VStack(alignment: .leading, spacing: 16) {
         QuotaBar(
             window: QuotaWindow(id: "5h", label: "5h", remainingPercent: 89, resetText: "2h 14m"),
-            tint: ClipBarTheme.brandColor(for: .codex)
+            tint: AccessDeckTheme.brandColor(for: .codex)
         )
         QuotaBar(
             window: QuotaWindow(id: "7d", label: "周额度", remainingPercent: 18, resetText: "4d"),
-            tint: ClipBarTheme.brandColor(for: .claude)
+            tint: AccessDeckTheme.brandColor(for: .claude)
         )
     }
     .padding(20)

@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 
 @main
-struct ClipBarApp: App {
+struct AccessDeckApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     var body: some Scene {

@@ -53,9 +53,9 @@ struct SettingsProviderRow: View {
                 .scaleEffect(0.8)
                 .frame(width: 22, height: 22)
 
-            Text(ClipBarTheme.percentText(remaining))
+            Text(AccessDeckTheme.percentText(remaining))
                 .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                .foregroundStyle(ClipBarTheme.progressColor(for: provider, remaining: remaining, customHex: customColorHex))
+                .foregroundStyle(AccessDeckTheme.progressColor(for: provider, remaining: remaining, customHex: customColorHex))
         }
         .padding(.vertical, 2)
         .frame(minHeight: 28)
@@ -74,7 +74,7 @@ struct SettingsProviderRow: View {
                 if let customColorHex, let col = Color(hex: customColorHex) {
                     return col
                 }
-                return ClipBarTheme.brandColor(for: provider)
+                return AccessDeckTheme.brandColor(for: provider)
             },
             set: { newColor in
                 customColorHex = newColor.hexString

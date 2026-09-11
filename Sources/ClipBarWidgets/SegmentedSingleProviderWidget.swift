@@ -56,7 +56,7 @@ struct SegmentedSingleProviderQuotaCard: View {
 
     var body: some View {
         let percent = remainingPercent
-        let activeColor = ClipBarTheme.widgetBarColor(for: provider.provider, remaining: percent)
+        let activeColor = AccessDeckTheme.widgetBarColor(for: provider.provider, remaining: percent)
         let reset = WidgetFormatter.formatResetText(displayWindow?.resetText ?? provider.nearestResetText)
 
         VStack(alignment: .leading, spacing: 0) {
@@ -91,8 +91,8 @@ struct SegmentedSingleProviderQuotaCard: View {
                 let weekPercent = split.weekly.remainingPercent ?? 0
                 let isLow = fivePercent <= 20
                 let isCritical = fivePercent <= 10
-                let badgeTint: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
-                let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
+                let badgeTint: Color = isCritical ? AccessDeckTheme.danger : (isLow ? AccessDeckTheme.warning : Color.primary)
+                let badgeBg: Color = isCritical ? AccessDeckTheme.danger.opacity(0.16) : (isLow ? AccessDeckTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(alignment: .center, spacing: 5) {

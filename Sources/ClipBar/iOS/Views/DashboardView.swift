@@ -24,13 +24,13 @@ struct DashboardView: View {
                 .padding(.vertical, 12)
             }
             .background(Color(uiColor: .systemGroupedBackground))
-            .navigationTitle("ClipBar")
+            .navigationTitle("AccessDeck")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         triggerHaptic(.light)
-                        Task { await model.refresh(force: true, forceBackend: true) }
+                        Task { await model.refresh(force: true) }
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 15, weight: .semibold))
@@ -51,7 +51,7 @@ struct DashboardView: View {
             }
             .refreshable {
                 triggerHaptic(.medium)
-                await model.refresh(force: true, forceBackend: true)
+                await model.refresh(force: true)
             }
             .sheet(isPresented: $showingSettings) {
                 ServerSettingsView()
@@ -68,7 +68,7 @@ struct DashboardView: View {
                 }
             }
             .task {
-                await model.refresh(force: true, forceBackend: true)
+                await model.refresh(force: true)
             }
         }
     }
@@ -129,7 +129,7 @@ struct DashboardView: View {
                 title: L10n.t("可用账号", "Active Accounts"),
                 value: "\(model.healthyCount) / \(model.accounts.count)",
                 subtitle: L10n.t("可路由账号", "Routable accounts"),
-                accentColor: ClipBarTheme.accent
+                accentColor: AccessDeckTheme.accent
             )
         }
     }
@@ -152,10 +152,10 @@ struct DashboardView: View {
                             Text(L10n.t("调整排序", "Reorder"))
                         }
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(ClipBarTheme.accent)
+                        .foregroundStyle(AccessDeckTheme.accent)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(ClipBarTheme.accent.opacity(0.12), in: Capsule())
+                        .background(AccessDeckTheme.accent.opacity(0.12), in: Capsule())
                     }
                 } else {
                     Text("\(dashboardProviderGroups.count) " + L10n.t("个渠道", "Providers"))
@@ -229,14 +229,14 @@ struct DashboardView: View {
                         HealthMetricCard(
                             title: L10n.t("正常可用", "Healthy"),
                             count: model.healthyCount,
-                            color: ClipBarTheme.success,
+                            color: AccessDeckTheme.success,
                             icon: "checkmark.circle.fill"
                         )
 
                         HealthMetricCard(
                             title: L10n.t("额度紧张", "Low/Exhausted"),
                             count: lowOrExhaustedCount,
-                            color: ClipBarTheme.warning,
+                            color: AccessDeckTheme.warning,
                             icon: "exclamationmark.triangle.fill"
                         )
 
@@ -287,7 +287,7 @@ struct DashboardView: View {
         VStack(spacing: 16) {
             Image(systemName: "server.rack")
                 .font(.system(size: 48))
-                .foregroundStyle(ClipBarTheme.accent)
+                .foregroundStyle(AccessDeckTheme.accent)
                 .padding(.top, 16)
 
             VStack(spacing: 6) {
@@ -308,7 +308,7 @@ struct DashboardView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(ClipBarTheme.accent)
+                    .background(AccessDeckTheme.accent)
                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .padding(.horizontal, 16)
@@ -323,11 +323,11 @@ struct DashboardView: View {
     private var connectionIndicatorColor: Color {
         switch model.connection {
         case .online, .idle:
-            ClipBarTheme.success
+            AccessDeckTheme.success
         case .refreshing:
-            ClipBarTheme.warning
+            AccessDeckTheme.warning
         case .failed:
-            ClipBarTheme.danger
+            AccessDeckTheme.danger
         case .unconfigured:
             .secondary
         }
@@ -349,16 +349,14 @@ struct DashboardView: View {
     }
 
     private var connectionMethodIcon: String {
-        model.settings.usesBackend ? "server.rack" : "arrow.left.arrow.right"
+        model.settings.isConfigured ? model.settings.connectionMode.systemImage : "questionmark.circle"
     }
 
     private var connectionMethodTitle: String {
         guard model.settings.isConfigured else {
             return L10n.t("尚未配置连接方式", "No connection method configured")
         }
-        return model.settings.usesBackend
-            ? L10n.t("ClipBar 后端同步", "ClipBar backend sync")
-            : L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI")
+        return model.settings.connectionMode.displayName
     }
 
     private var lowestQuotaText: String {
@@ -369,7 +367,7 @@ struct DashboardView: View {
 
     private var lowestQuotaColor: Color {
         let lowest = model.accounts.flatMap(\.snapshot.windows).compactMap(\.remainingPercent).min()
-        return ClipBarTheme.progressColor(for: .unknown, remaining: lowest)
+        return AccessDeckTheme.progressColor(for: .unknown, remaining: lowest)
     }
 
     private func triggerHaptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
@@ -421,7 +419,7 @@ private struct ProviderGridCard: View {
                 if isHidden {
                     Image(systemName: "eye.slash")
                         .font(.caption2)
-                        .foregroundStyle(ClipBarTheme.warning)
+                        .foregroundStyle(AccessDeckTheme.warning)
                 }
                 Spacer()
                 Text("\(accounts.count)")
@@ -458,14 +456,14 @@ private struct ProviderGridCard: View {
     @ViewBuilder
     private func quotaRow(label: String, remaining: Double?) -> some View {
         let customHex = model.settings.customColorHex(for: provider)
-        let color = ClipBarTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
+        let color = AccessDeckTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline) {
                 Text(label)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(ClipBarTheme.percentText(remaining))
+                Text(AccessDeckTheme.percentText(remaining))
                     .font(.subheadline.monospacedDigit().weight(.bold))
                     .foregroundStyle(color)
             }
@@ -531,7 +529,7 @@ private struct ProviderReorderSheet: View {
                             } label: {
                                 Image(systemName: isHidden ? "eye.slash.fill" : "eye.fill")
                                     .font(.system(size: 14))
-                                    .foregroundStyle(isHidden ? ClipBarTheme.warning : ClipBarTheme.accent)
+                                    .foregroundStyle(isHidden ? AccessDeckTheme.warning : AccessDeckTheme.accent)
                                     .frame(width: 28, height: 28)
                                     .background(Color.primary.opacity(0.05), in: Circle())
                             }
@@ -545,10 +543,10 @@ private struct ProviderReorderSheet: View {
                                     if isHidden {
                                         Text(L10n.t("已在看板中隐藏", "Hidden in dashboard"))
                                             .font(.caption2.weight(.medium))
-                                            .foregroundStyle(ClipBarTheme.warning)
+                                            .foregroundStyle(AccessDeckTheme.warning)
                                             .padding(.horizontal, 5)
                                             .padding(.vertical, 1)
-                                            .background(ClipBarTheme.warning.opacity(0.12), in: Capsule())
+                                            .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
                                     }
                                 }
                                 Text("\(count) " + L10n.t("个订阅账号", "accounts"))

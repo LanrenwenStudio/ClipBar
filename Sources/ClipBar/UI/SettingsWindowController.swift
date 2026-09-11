@@ -21,14 +21,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             contentRect: NSRect(
                 x: 0,
                 y: 0,
-                width: ClipBarTheme.settingsWidth,
-                height: ClipBarTheme.settingsHeight
+                width: AccessDeckTheme.settingsWidth,
+                height: AccessDeckTheme.settingsHeight
             ),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
-        window.title = L10n.t("ClipBar 设置", "ClipBar Settings")
+        window.title = L10n.t("AccessDeck 设置", "AccessDeck Settings")
         window.isFloatingPanel = false
         window.becomesKeyOnlyIfNeeded = false
         window.hidesOnDeactivate = false

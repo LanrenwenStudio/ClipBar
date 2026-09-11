@@ -71,7 +71,7 @@ struct LockScreenQuotaView: View {
             // 无数据时的紧凑占位
             switch family {
             case .accessoryInline:
-                Text("ClipBar: 暂无数据")
+                Text("AccessDeck: 暂无数据")
             case .accessoryCircular:
                 VStack(spacing: 2) {
                     Image(systemName: "chart.bar.xaxis")

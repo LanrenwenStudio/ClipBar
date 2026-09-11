@@ -5,7 +5,7 @@ struct MenuBarStatusLabel: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        HStack(spacing: ClipBarTheme.spacingXS) {
+        HStack(spacing: AccessDeckTheme.spacingXS) {
             if model.statusSegments.isEmpty {
                 Text(model.statusTitle)
                     .monospacedDigit()
@@ -44,8 +44,8 @@ struct MenuBarStatusLabel: View {
            let weekly = segment.weeklyRemaining {
             let isLow = fiveHour <= 20
             let isCritical = fiveHour <= 10
-            let badgeColor: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : .white)
-            let badgeBg: Color = isCritical ? ClipBarTheme.danger.opacity(0.24) : (isLow ? ClipBarTheme.warning.opacity(0.22) : Color.white.opacity(0.12))
+            let badgeColor: Color = isCritical ? AccessDeckTheme.danger : (isLow ? AccessDeckTheme.warning : .white)
+            let badgeBg: Color = isCritical ? AccessDeckTheme.danger.opacity(0.24) : (isLow ? AccessDeckTheme.warning.opacity(0.22) : Color.white.opacity(0.12))
 
             HStack(alignment: .center, spacing: 4.5) {
                 // 5 小时完整小胶囊（前置）

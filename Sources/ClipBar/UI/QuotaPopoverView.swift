@@ -14,13 +14,13 @@ struct QuotaPopoverView: View {
             footer
         }
         .padding(12)
-        .frame(width: ClipBarTheme.popoverWidth)
+        .frame(width: AccessDeckTheme.popoverWidth)
     }
     private var header: some View {
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text("ClipBar")
+                    Text("AccessDeck")
                         .font(.system(size: 13, weight: .semibold))
                     ConnectionBadge(title: connectionText, color: connectionColor)
                 }
@@ -121,7 +121,7 @@ struct QuotaPopoverView: View {
                         .padding(.vertical, 1)
                     }
                     .scrollIndicators(.hidden)
-                    .frame(maxHeight: ClipBarTheme.popoverMaxListHeight)
+                    .frame(maxHeight: AccessDeckTheme.popoverMaxListHeight)
                 }
             }
             .id(model.visibleProvider)
@@ -166,11 +166,11 @@ struct QuotaPopoverView: View {
         case .unconfigured:
             .secondary
         case .refreshing:
-            ClipBarTheme.accent
+            AccessDeckTheme.accent
         case .failed:
-            ClipBarTheme.danger
+            AccessDeckTheme.danger
         case .idle, .online:
-            ClipBarTheme.success
+            AccessDeckTheme.success
         }
     }
 
@@ -189,7 +189,7 @@ struct QuotaPopoverView: View {
     }
 
     private func refresh() {
-        Task { await model.refresh(force: true, forceBackend: true) }
+        Task { await model.refresh(force: true) }
     }
 }
 

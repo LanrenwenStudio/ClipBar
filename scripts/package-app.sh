@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_PATH="$ROOT_DIR/ClipBar.xcodeproj"
 SCHEME="ClipBar"
-APP_NAME="ClipBar"
+APP_NAME="AccessDeck"
 BUILD_STAMP="$(date +%Y%m%d-%H%M%S)-$$"
 WORK_DIR="$ROOT_DIR/.build/package/$BUILD_STAMP"
 DERIVED_DATA_PATH="$WORK_DIR/DerivedData"
@@ -155,9 +155,9 @@ main() {
   if [[ -n "$PACKAGE_FILENAME" ]]; then
     package_name="$PACKAGE_FILENAME"
   elif [[ "$DISTRIBUTION_MODE" == "developer-id" ]]; then
-    package_name="clipbar-${version}.dmg"
+    package_name="accessdeck-${version}.dmg"
   else
-    package_name="clipbar-${version}-local.dmg"
+    package_name="accessdeck-${version}-local.dmg"
   fi
 
   package_path="$DIST_DIR/$package_name"
@@ -199,14 +199,14 @@ main() {
   fi
 
   mv -f "$working_package_path" "$package_path"
-  cp -f "$package_path" "$DIST_DIR/ClipBar.dmg"
+  cp -f "$package_path" "$DIST_DIR/AccessDeck.dmg"
   checksum="$(shasum -a 256 "$package_path" | awk '{print $1}')"
   zip_checksum="$(shasum -a 256 "$DIST_DIR/$APP_NAME.zip" | awk '{print $1}')"
 
   cat <<EOF
 Created package:
   DMG: $package_path (SHA256: $checksum)
-  DMG (invariant): $DIST_DIR/ClipBar.dmg
+  DMG (invariant): $DIST_DIR/AccessDeck.dmg
   ZIP: $DIST_DIR/$APP_NAME.zip (SHA256: $zip_checksum)
 EOF
 }

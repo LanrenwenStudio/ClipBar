@@ -154,7 +154,7 @@ struct QuotaService: Sendable {
                 lastError = snapshot.error ?? "empty quota"
                 continue
             }
-            lastError = response.body.isEmpty ? "HTTP \(response.statusCode)" : response.body
+            lastError = "HTTP \(response.statusCode)"
         }
         return QuotaSnapshot(planType: nil, windows: [], error: lastError)
     }
@@ -198,7 +198,7 @@ struct QuotaService: Sendable {
             snapshot = QuotaParser.parseXai(object)
         } else {
             let failed = [weekly, monthly].first { !(200..<300).contains($0.statusCode) } ?? weekly
-            throw ManagementClientError.httpStatus(failed.statusCode, failed.body)
+            throw ManagementClientError.httpStatus(failed.statusCode, "")
         }
         if snapshot.planType == nil, let object = JSONValue.object(from: monthly.body) {
             snapshot.planType = QuotaParser.parseXai(object).planType
@@ -296,7 +296,7 @@ struct QuotaService: Sendable {
 
     private func decode(_ response: APICallResponse, using parse: ([String: Any]) -> QuotaSnapshot) throws -> QuotaSnapshot {
         guard (200..<300).contains(response.statusCode) else {
-            throw ManagementClientError.httpStatus(response.statusCode, response.body)
+            throw ManagementClientError.httpStatus(response.statusCode, "")
         }
         guard let object = JSONValue.object(from: response.body) else {
             throw ManagementClientError.invalidResponse

@@ -11,13 +11,13 @@ struct AccountCard: View {
             if let error = row.snapshot.error, row.snapshot.windows.isEmpty {
                 Text(error)
                     .font(.system(size: 10))
-                    .foregroundStyle(ClipBarTheme.warning)
+                    .foregroundStyle(AccessDeckTheme.warning)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(spacing: 4) {
                     let customHex = model.settings.customColorHex(for: row.account.provider)
                     ForEach(row.snapshot.windows) { window in
-                        QuotaBar(window: window, tint: ClipBarTheme.progressColor(for: row.account.provider, remaining: window.remainingPercent, customHex: customHex))
+                        QuotaBar(window: window, tint: AccessDeckTheme.progressColor(for: row.account.provider, remaining: window.remainingPercent, customHex: customHex))
                     }
                 }
             }

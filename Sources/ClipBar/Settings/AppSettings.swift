@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-enum AppTheme: String, CaseIterable, Identifiable, Sendable {
+enum AppTheme: String, CaseIterable, Identifiable, Sendable, Codable {
     case system = "system"
     case light = "light"
     case dark = "dark"
@@ -28,7 +28,7 @@ enum AppTheme: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-enum StatusQuotaDisplay: String, CaseIterable, Identifiable, Sendable {
+enum StatusQuotaDisplay: String, CaseIterable, Identifiable, Sendable, Codable {
     case fiveHour = "5h"
     case weekly = "7d"
     case both = "both"
@@ -47,15 +47,50 @@ enum StatusQuotaDisplay: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct AppSettings: Equatable, Sendable {
+enum QuotaConnectionMode: String, CaseIterable, Identifiable, Sendable, Codable {
+    case direct = "direct"
+    case plugin = "plugin"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .direct:
+            L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI")
+        case .plugin:
+            L10n.t("CLIProxyAPI Quota 插件", "CLIProxyAPI quota plugin")
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .direct:
+            L10n.t(
+                "由 AccessDeck 通过 CLIProxyAPI 管理接口读取账号并探测额度。",
+                "AccessDeck reads auth entries and probes quotas through the CLIProxyAPI management API."
+            )
+        case .plugin:
+            L10n.t(
+                "读取 CLIProxyAPI 的 clipbar-quota 插件；需要先在 CPA 中安装并启用插件。",
+                "Reads the clipbar-quota plugin; install and enable it in CPA first."
+            )
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .direct: "arrow.left.arrow.right"
+        case .plugin: "puzzlepiece.extension"
+        }
+    }
+}
+
+struct AppSettings: Equatable, Sendable, Codable {
     static let refreshIntervalPresets = [60, 180, 300, 600, 900]
-    static let backendURL = "http://192.168.1.3:8081"
-    static let backendAccessToken = "clipbar-kevin"
 
     var baseURL: String
     var managementKey: String
-    var backendURL: String
-    var backendAccessToken: String
+    var connectionMode: QuotaConnectionMode
     var refreshSeconds: Int
     var statusItemOrder: [String]
     var hiddenStatusItemIDs: [String]
@@ -74,8 +109,7 @@ struct AppSettings: Equatable, Sendable {
     static let `default` = AppSettings(
         baseURL: Self.defaultBaseURL,
         managementKey: "",
-        backendURL: Self.backendURL,
-        backendAccessToken: Self.backendAccessToken,
+        connectionMode: .direct,
         refreshSeconds: 300,
         statusItemOrder: [],
         hiddenStatusItemIDs: [],
@@ -89,16 +123,47 @@ struct AppSettings: Equatable, Sendable {
         sortByRemainingQuota: true,
         appTheme: .system
     )
-    var isConfigured: Bool {
-        usesBackend || (!normalizedBaseURL.isEmpty && !normalizedManagementKey.isEmpty)
+
+    init(
+        baseURL: String,
+        managementKey: String,
+        connectionMode: QuotaConnectionMode,
+        refreshSeconds: Int,
+        statusItemOrder: [String],
+        hiddenStatusItemIDs: [String],
+        hideEmptyStatusItems: Bool,
+        statusQuotaWindow: StatusQuotaWindow,
+        statusQuotaDisplay: StatusQuotaDisplay,
+        statusQuotaDisplayOverrides: [String: StatusQuotaDisplay],
+        providerCustomColors: [String: String],
+        disabledAccountKeys: [String],
+        pinnedAccountKeys: [String],
+        sortByRemainingQuota: Bool,
+        appTheme: AppTheme
+    ) {
+        self.baseURL = baseURL
+        self.managementKey = managementKey
+        self.connectionMode = connectionMode
+        self.refreshSeconds = refreshSeconds
+        self.statusItemOrder = statusItemOrder
+        self.hiddenStatusItemIDs = hiddenStatusItemIDs
+        self.hideEmptyStatusItems = hideEmptyStatusItems
+        self.statusQuotaWindow = statusQuotaWindow
+        self.statusQuotaDisplay = statusQuotaDisplay
+        self.statusQuotaDisplayOverrides = statusQuotaDisplayOverrides
+        self.providerCustomColors = providerCustomColors
+        self.disabledAccountKeys = disabledAccountKeys
+        self.pinnedAccountKeys = pinnedAccountKeys
+        self.sortByRemainingQuota = sortByRemainingQuota
+        self.appTheme = appTheme
     }
 
-    var usesBackend: Bool {
-        !normalizedBackendURL.isEmpty && !normalizedBackendAccessToken.isEmpty
+    var isConfigured: Bool {
+        !normalizedBaseURL.isEmpty && !normalizedManagementKey.isEmpty
     }
 
     var activeURL: String {
-        usesBackend ? normalizedBackendURL : normalizedBaseURL
+        normalizedBaseURL
     }
 
     var normalizedBaseURL: String {
@@ -107,14 +172,6 @@ struct AppSettings: Equatable, Sendable {
 
     var normalizedManagementKey: String {
         managementKey.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    var normalizedBackendURL: String {
-        backendURL.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    var normalizedBackendAccessToken: String {
-        backendAccessToken.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     var clampedRefreshSeconds: Int {
@@ -167,5 +224,63 @@ struct AppSettings: Equatable, Sendable {
 
     func isAccountPinned(statusKey: String) -> Bool {
         pinnedAccountKeySet.contains(statusKey)
+    }
+
+    // Credentials are deliberately excluded from Codable. They are stored in
+    // SettingsSecretStore and must never enter an iCloud KVS payload.
+    private enum CodingKeys: String, CodingKey {
+        case baseURL
+        case connectionMode
+        case refreshSeconds
+        case statusItemOrder
+        case hiddenStatusItemIDs
+        case hideEmptyStatusItems
+        case statusQuotaWindow
+        case statusQuotaDisplay
+        case statusQuotaDisplayOverrides
+        case providerCustomColors
+        case disabledAccountKeys
+        case pinnedAccountKeys
+        case sortByRemainingQuota
+        case appTheme
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            baseURL: try container.decodeIfPresent(String.self, forKey: .baseURL) ?? "",
+            managementKey: "",
+            connectionMode: try container.decodeIfPresent(QuotaConnectionMode.self, forKey: .connectionMode) ?? .direct,
+            refreshSeconds: try container.decodeIfPresent(Int.self, forKey: .refreshSeconds) ?? 300,
+            statusItemOrder: try container.decodeIfPresent([String].self, forKey: .statusItemOrder) ?? [],
+            hiddenStatusItemIDs: try container.decodeIfPresent([String].self, forKey: .hiddenStatusItemIDs) ?? [],
+            hideEmptyStatusItems: try container.decodeIfPresent(Bool.self, forKey: .hideEmptyStatusItems) ?? false,
+            statusQuotaWindow: try container.decodeIfPresent(StatusQuotaWindow.self, forKey: .statusQuotaWindow) ?? .fiveHour,
+            statusQuotaDisplay: try container.decodeIfPresent(StatusQuotaDisplay.self, forKey: .statusQuotaDisplay) ?? .fiveHour,
+            statusQuotaDisplayOverrides: try container.decodeIfPresent([String: StatusQuotaDisplay].self, forKey: .statusQuotaDisplayOverrides) ?? [:],
+            providerCustomColors: try container.decodeIfPresent([String: String].self, forKey: .providerCustomColors) ?? [:],
+            disabledAccountKeys: try container.decodeIfPresent([String].self, forKey: .disabledAccountKeys) ?? [],
+            pinnedAccountKeys: try container.decodeIfPresent([String].self, forKey: .pinnedAccountKeys) ?? [],
+            sortByRemainingQuota: try container.decodeIfPresent(Bool.self, forKey: .sortByRemainingQuota) ?? true,
+            appTheme: try container.decodeIfPresent(AppTheme.self, forKey: .appTheme) ?? .system
+        )
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(baseURL, forKey: .baseURL)
+        try container.encode(connectionMode, forKey: .connectionMode)
+        try container.encode(refreshSeconds, forKey: .refreshSeconds)
+        try container.encode(statusItemOrder, forKey: .statusItemOrder)
+        try container.encode(hiddenStatusItemIDs, forKey: .hiddenStatusItemIDs)
+        try container.encode(hideEmptyStatusItems, forKey: .hideEmptyStatusItems)
+        try container.encode(statusQuotaWindow, forKey: .statusQuotaWindow)
+        try container.encode(statusQuotaDisplay, forKey: .statusQuotaDisplay)
+        try container.encode(statusQuotaDisplayOverrides, forKey: .statusQuotaDisplayOverrides)
+        try container.encode(providerCustomColors, forKey: .providerCustomColors)
+        try container.encode(disabledAccountKeys, forKey: .disabledAccountKeys)
+        try container.encode(pinnedAccountKeys, forKey: .pinnedAccountKeys)
+        try container.encode(sortByRemainingQuota, forKey: .sortByRemainingQuota)
+        try container.encode(appTheme, forKey: .appTheme)
     }
 }

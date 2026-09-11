@@ -33,8 +33,6 @@ targets:
       - path: Sources/ClipBar/Resources/ClipBarIcon.icns
         type: file
         buildPhase: resources
-      - path: Sources/ClipBar/Networking/QuotaBackendClient.swift
-        type: file
       - path: Sources/ClipBarWidgets/SegmentedPillBar.swift
         type: file
     settings:
@@ -44,6 +42,7 @@ targets:
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: Sources/ClipBar/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/ClipBar/ClipBar.entitlements
+        DEVELOPMENT_TEAM: "X37879TD5Q"
         ENABLE_APP_SANDBOX: true
         ENABLE_HARDENED_RUNTIME: true
         COMBINE_HIDPI_IMAGES: true
@@ -53,6 +52,7 @@ targets:
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
+        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)"
     scheme:
       gatherCoverageData: true
       testTargets:
@@ -79,8 +79,6 @@ targets:
       - path: Sources/ClipBar/Resources/ClipBarIcon.png
         type: file
         buildPhase: resources
-      - path: Sources/ClipBar/Networking/QuotaBackendClient.swift
-        type: file
       - path: Sources/ClipBar/App/BackgroundRefreshScheduler.swift
         type: file
       - path: Sources/ClipBarWidgets/SegmentedPillBar.swift
@@ -96,11 +94,13 @@ targets:
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: Sources/ClipBar/iOS/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/ClipBar/ClipBar-iOS.entitlements
+        DEVELOPMENT_TEAM: "X37879TD5Q"
     entitlements:
       path: Sources/ClipBar/ClipBar-iOS.entitlements
       properties:
         com.apple.security.application-groups:
           - group.com.lanrenwen.clipbar
+        com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)"
     dependencies:
       - target: ClipBarWidgets
     scheme:
@@ -150,6 +150,7 @@ targets:
       - target: ClipBar
     settings:
       base:
+        PRODUCT_NAME: ClipBarTests
         PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.tests
         GENERATE_INFOPLIST_FILE: true
         MACOSX_DEPLOYMENT_TARGET: "14.0"

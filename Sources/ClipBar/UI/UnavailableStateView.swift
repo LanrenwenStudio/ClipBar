@@ -19,7 +19,7 @@ struct UnavailableStateView: View {
                     .controlSize(.small)
             }
         }
-        .padding(ClipBarTheme.spacingL)
+        .padding(AccessDeckTheme.spacingL)
         .frame(maxWidth: .infinity, minHeight: 168, alignment: .center)
     }
 }

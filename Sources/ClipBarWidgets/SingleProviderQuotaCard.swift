@@ -53,7 +53,7 @@ struct SingleProviderQuotaCard: View {
 
     var body: some View {
         let percent = remainingPercent
-        let barColor = ClipBarTheme.widgetBarColor(for: provider.provider, remaining: percent)
+        let barColor = AccessDeckTheme.widgetBarColor(for: provider.provider, remaining: percent)
         let reset = WidgetFormatter.formatResetText(displayWindow?.resetText ?? provider.nearestResetText)
         let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "可用配额" : "Quota")
 
@@ -89,8 +89,8 @@ struct SingleProviderQuotaCard: View {
                 let weekPercent = split.weekly.remainingPercent ?? 0
                 let isLow = fivePercent <= 20
                 let isCritical = fivePercent <= 10
-                let tintColor: Color = isCritical ? ClipBarTheme.danger : (isLow ? ClipBarTheme.warning : Color.primary)
-                let bgFill: Color = isCritical ? ClipBarTheme.danger.opacity(0.16) : (isLow ? ClipBarTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
+                let tintColor: Color = isCritical ? AccessDeckTheme.danger : (isLow ? AccessDeckTheme.warning : Color.primary)
+                let bgFill: Color = isCritical ? AccessDeckTheme.danger.opacity(0.16) : (isLow ? AccessDeckTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .center, spacing: 5) {

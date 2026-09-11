@@ -6,7 +6,7 @@ import UIKit
 #endif
 import SwiftUI
 
-enum ClipBarTheme {
+enum AccessDeckTheme {
     static let popoverWidth: CGFloat = 320
 #if os(macOS)
     static var popoverMaxListHeight: CGFloat {

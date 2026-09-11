@@ -19,7 +19,7 @@ struct ProviderSummaryCard: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                Text(ClipBarTheme.percentText(remaining))
+                Text(AccessDeckTheme.percentText(remaining))
                     .font(.system(size: 12.5, weight: .bold, design: .monospaced))
                     .foregroundStyle(percentColor)
             }
@@ -32,7 +32,7 @@ struct ProviderSummaryCard: View {
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                     Spacer()
-                    Text(ClipBarTheme.percentText(weeklyRemaining))
+                    Text(AccessDeckTheme.percentText(weeklyRemaining))
                         .font(.system(size: 11.5, weight: .bold, design: .monospaced))
                         .foregroundStyle(weeklyColor)
                 }
@@ -81,18 +81,18 @@ struct ProviderSummaryCard: View {
     }
 
     private var percentColor: Color {
-        ClipBarTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
+        AccessDeckTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
     }
 
     private var weeklyColor: Color {
-        ClipBarTheme.progressColor(for: provider, remaining: weeklyRemaining, customHex: customHex)
+        AccessDeckTheme.progressColor(for: provider, remaining: weeklyRemaining, customHex: customHex)
     }
 
     private var accessibilityText: String {
-        let weekly = weeklyRemaining.map { L10n.t(", 周额度 \(ClipBarTheme.percentText($0))", ", weekly quota \(ClipBarTheme.percentText($0))") } ?? ""
+        let weekly = weeklyRemaining.map { L10n.t(", 周额度 \(AccessDeckTheme.percentText($0))", ", weekly quota \(AccessDeckTheme.percentText($0))") } ?? ""
         return L10n.t(
-            "\(provider.displayName) 剩余 \(ClipBarTheme.percentText(remaining))\(weekly)，\(accountCount) 个账号",
-            "\(provider.displayName) remaining \(ClipBarTheme.percentText(remaining))\(weekly), \(accountCount) accounts"
+            "\(provider.displayName) 剩余 \(AccessDeckTheme.percentText(remaining))\(weekly)，\(accountCount) 个账号",
+            "\(provider.displayName) remaining \(AccessDeckTheme.percentText(remaining))\(weekly), \(accountCount) accounts"
         )
     }
 }
