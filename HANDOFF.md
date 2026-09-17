@@ -1,26 +1,27 @@
-# AccessDeck / ClipBar Handoff
+# AccessDeck / AccessDeck Handoff
 
 ## 当前状态
 
 - 工作目录：`/Users/kevin/Developer/Code/LanrenwenStudio/AccessDeck`
 - 分支：`main`
-- 基线提交：`36084cb feat: sync quota reset countdowns across surfaces`
-- 当前改动：**未提交、未推送**；没有执行生产/发布构建。
-- `ClipBar.xcodeproj` 是 `xcodegen` 生成的工程，已被忽略；源文件是 `project.yml`。
+- 当前提交：`744edc3 feat: migrate AccessDeck to CLIProxyAPI integrations`
+- 分支：`main`，比 `origin/main` 超前 3 个提交；当前工作区包含 CPA 默认地址、Widget 5 小时标签动态化及对应测试，**未提交、未推送**。
+- 未执行生产/发布构建；已执行 macOS 测试、iOS Simulator Debug 构建，并使用本地 Apple Development 证书完成 iPhone 真机临时签名、覆盖安装和启动。
+- `AccessDeck.xcodeproj` 是 `xcodegen` 生成的工程，已被忽略；源文件是 `project.yml`。
 
 ## 已完成的工作
 
 ### 产品改名
 
-- 公开品牌为 **AccessDeck**，内部工程与兼容性标识仍保留 ClipBar。
+- 公开品牌为 **AccessDeck**，内部工程与兼容性标识仍保留 AccessDeck。
 - 仍保留兼容性敏感的内部标识，不要因为目录改名而一起改动：
-  - macOS Bundle ID：`com.lanrenwen.clipbar`
-  - iOS Bundle ID：`com.lanrenwen.clipbar.ios`
-  - Widget Bundle ID：`com.lanrenwen.clipbar.ios.widgets`
-  - App Group：`group.com.lanrenwen.clipbar`
-  - iOS 后台任务：`com.lanrenwen.clipbar.ios.refresh`
+  - macOS Bundle ID：`com.lanrenwen.accessdeck`
+  - iOS Bundle ID：`com.lanrenwen.accessdeck.ios`
+  - Widget Bundle ID：`com.lanrenwen.accessdeck.ios.widgets`
+  - App Group：`group.com.lanrenwen.accessdeck`
+  - iOS 后台任务：`com.lanrenwen.accessdeck.ios.refresh`
   - UserDefaults / iCloud KVS 中的 `clipbar.*` keys
-  - 工程、target、module 的内部名称目前仍是 `ClipBar`
+  - 工程、target、module 的内部名称目前仍是 `AccessDeck`
 
 ### 跨端同步
 
@@ -34,32 +35,48 @@
 
 ### 敏感凭据
 
-- 新增 `Sources/ClipBar/Settings/SettingsSecretStore.swift`。
+- 新增 `Sources/AccessDeck/Settings/SettingsSecretStore.swift`。
 - `managementKey` 不再写入 UserDefaults，也不再进入 iCloud KVS 设置 payload；旧 `backendAccessToken` 仅执行一次性清理。
 - 两者改用可同步的 iCloud Keychain（`kSecAttrSynchronizable`）。
 - 已保留旧 UserDefaults 凭据迁移：首次读取时迁移到 Keychain 并删除旧 UserDefaults 值。
-- Keychain service：`com.lanrenwen.clipbar.settings`。
+- Keychain service：`com.lanrenwen.accessdeck.settings`。
 
 ## 当前未提交文件
 
-除下列文件外，当前改动还包括 CPA 连接抽象、插件集成、旧 backend 删除和相关测试：
+当前提交 `744edc3` 已包含 CPA 连接抽象、插件集成、旧 backend 删除和相关测试。提交后的未提交改动包括 CPA 默认连接地址、iOS CPA 地址预设、iOS 与 macOS 一致的 Direct/Plugin 二选一连接方式切换、锁屏/多渠道 Widget 的动态 5 小时标签及对应测试：
 
-- `Sources/ClipBar/App/AppModel.swift`
-- `Sources/ClipBar/ClipBar-iOS.entitlements`
-- `Sources/ClipBar/ClipBar.entitlements`
-- `Sources/ClipBar/Models/StatusQuotaWindow.swift`
-- `Sources/ClipBar/Networking/ManagementClient.swift`
-- `Sources/ClipBar/Networking/QuotaConnection.swift`（新增）
-- `Sources/ClipBar/Settings/AppSettings.swift`
-- `Sources/ClipBar/Settings/SettingsSecretStore.swift`（新增）
-- `Sources/ClipBar/Settings/SettingsStore.swift`
-- `Sources/ClipBar/UI/QuotaPopoverView.swift`
-- `Sources/ClipBar/UI/SettingsView.swift`
-- `Sources/ClipBar/iOS/ClipBarIOSApp.swift`
-- `Sources/ClipBar/iOS/Views/DashboardView.swift`
-- `Sources/ClipBar/iOS/Views/ServerSettingsView.swift`
-- `Tests/ClipBarTests/AppSettingsTests.swift`
-- `Tests/ClipBarTests/QuotaConnectionTests.swift`（新增）
+- `Sources/AccessDeck/Models/StatusBarSummary.swift`
+- `Sources/AccessDeck/Models/WidgetSnapshot.swift`
+- `Sources/AccessDeckWidgets/LockScreenMultiProviderWidget.swift`
+- `Sources/AccessDeckWidgets/LockScreenQuotaWidget.swift`
+- `Sources/AccessDeckWidgets/SegmentedMultiProviderWidget.swift`
+- `Sources/AccessDeckWidgets/SegmentedSingleProviderWidget.swift`
+- `Sources/AccessDeckWidgets/SingleProviderQuotaCard.swift`
+- `Sources/AccessDeckWidgets/TripleProviderWidget.swift`
+- `Tests/AccessDeckTests/StatusBarSummaryTests.swift`
+- `Sources/AccessDeck/Settings/AppSettings.swift`
+- `Sources/AccessDeck/Settings/SettingsStore.swift`
+- `Sources/AccessDeck/iOS/Views/ServerSettingsView.swift`
+- `Tests/AccessDeckTests/AppSettingsTests.swift`
+
+> 下方列表是 `744edc3` 已提交的迁移文件，非本次未提交改动。
+
+- `Sources/AccessDeck/App/AppModel.swift`
+- `Sources/AccessDeck/AccessDeck-iOS.entitlements`
+- `Sources/AccessDeck/AccessDeck.entitlements`
+- `Sources/AccessDeck/Models/StatusQuotaWindow.swift`
+- `Sources/AccessDeck/Networking/ManagementClient.swift`
+- `Sources/AccessDeck/Networking/QuotaConnection.swift`（新增）
+- `Sources/AccessDeck/Settings/AppSettings.swift`
+- `Sources/AccessDeck/Settings/SettingsSecretStore.swift`（新增）
+- `Sources/AccessDeck/Settings/SettingsStore.swift`
+- `Sources/AccessDeck/UI/QuotaPopoverView.swift`
+- `Sources/AccessDeck/UI/SettingsView.swift`
+- `Sources/AccessDeck/iOS/AccessDeckIOSApp.swift`
+- `Sources/AccessDeck/iOS/Views/DashboardView.swift`
+- `Sources/AccessDeck/iOS/Views/ServerSettingsView.swift`
+- `Tests/AccessDeckTests/AppSettingsTests.swift`
+- `Tests/AccessDeckTests/QuotaConnectionTests.swift`（新增）
 - `project.yml`
 - `Integrations/clipbar-quota-plugin/`（新增）
 - `HANDOFF.md`（本文件）
@@ -71,14 +88,35 @@
 
 ```text
 xcodegen generate
-xcodebuild -project ClipBar.xcodeproj -scheme ClipBar \
+xcodebuild -project AccessDeck.xcodeproj -scheme AccessDeck \
   -destination 'platform=macOS' test CODE_SIGNING_ALLOWED=NO
 # 46 tests in 4 suites passed; exit status 0
+
+xcodebuild -project AccessDeck.xcodeproj -scheme AccessDeck-iOS \
+  -sdk iphonesimulator -configuration Debug build CODE_SIGNING_ALLOWED=NO
+# BUILD SUCCEEDED；iOS 连接方式为 Direct/Plugin 二选一分段切换。
+
+xcodebuild -project AccessDeck.xcodeproj -scheme AccessDeck-iOS \
+  -configuration Debug -destination 'id=00008101-001A78C61ED2001E' build
+# 正式工程签名仍受本机 Xcode-managed profile 缺少 iCloud / ubiquity-kvstore entitlement 影响。
+# 随后使用本地有效 Apple Development 证书和 App Group 允许的临时签名配置完成真机包组装与安装。
+
+xcrun devicectl device install app --device 00008101-001A78C61ED2001E \
+  /tmp/AccessDeck-iOSManualAssemble/AccessDeck.app
+# App installed: com.lanrenwen.accessdeck.ios
+
+xcrun devicectl device process launch --device 00008101-001A78C61ED2001E \
+  com.lanrenwen.accessdeck.ios
+# Launched application
 
 git diff --check
 ```
 
+锁屏 Widget 5 小时标签已统一使用最近重置时间的整小时桶：`5h`、`4h`、`3h`、`2h`、`1h`；小于 1 小时也显示 `1h`。覆盖了锁屏单渠道、多渠道，以及普通/分段多渠道和单渠道卡片。UI 实际效果仍需用户在设备上验收。
+
 插件已通过此前的 `go test ./...`、`go vet ./...`、`make check` 和格式检查；尚未构建或加载 c-shared 动态库。未执行生产/发布构建。
+
+CPA 直连默认值：`AppSettings.default.baseURL` 及 iOS 的 LAN 预设均为 `http://192.168.1.3:8317`，默认模式为 Direct；管理密钥仍从 Keychain 读取，未写入本文件。当前 macOS 偏好设置已显示该 CPA 地址和 Direct 相关字段，旧 backend URL/token 会在 `SettingsStore.load()` 中清理。
 
 ## 文件夹改名操作
 
@@ -87,10 +125,10 @@ git diff --check
 ```bash
 cd /Users/kevin/Developer/Code/LanrenwenStudio
 if [ -e AccessDeck ]; then
-  echo 'AccessDeck already exists; aborting'
-  exit 1
+  echo 'AccessDeck already exists; no rename needed'
+else
+  mv ClipBar AccessDeck
 fi
-mv ClipBar AccessDeck
 cd AccessDeck
 xcodegen generate
 ```
@@ -98,22 +136,22 @@ xcodegen generate
 目录改名本身不会改变 Git 历史，也不会改变 Bundle ID、App Group、KVS key 或 Keychain service。改名后应重新打开：
 
 ```text
-/Users/kevin/Developer/Code/LanrenwenStudio/AccessDeck/ClipBar.xcodeproj
+/Users/kevin/Developer/Code/LanrenwenStudio/AccessDeck/AccessDeck.xcodeproj
 ```
 
-目前只建议改**外层仓库目录名**。除非另有明确要求，不要同时把 `Sources/ClipBar`、`ClipBar.xcodeproj`、target/module 名称改成 `AccessDeck`，以免扩大兼容性风险。
+目前只建议改**外层仓库目录名**。除非另有明确要求，不要同时把 `Sources/AccessDeck`、`AccessDeck.xcodeproj`、target/module 名称改成 `AccessDeck`，以免扩大兼容性风险。
 
 ## 后续工作
 
-1. 改名后确认 `git status --short` 仍只包含上述未提交改动。
-2. 重新运行 `xcodegen generate` 和 macOS/iOS 轻量构建检查。
+1. 提交 `HANDOFF.md` 与当前 13 个源码/测试文件。
+2. 改名后确认 `git status --short` 仍只包含上述未提交改动。
 3. 在同一 Apple ID 的 macOS 与 iPhone 真机上验证：
    - iCloud KVS 设置传播；
    - 新时间戳覆盖旧时间戳；
    - iCloud Keychain 凭据传播；
    - 后台刷新和 Widget 更新。
-4. 检查签名环境下的 iCloud entitlement / provisioning；当前验证使用了 `CODE_SIGNING_ALLOWED=NO`。
-5. 确认无误后再决定是否提交。当前不要自动 commit、push 或发布。
+4. 检查正式签名环境下的 iCloud entitlement / provisioning；本次真机安装使用的是去除未获 profile 授权的 iCloud KVS entitlement 后、通过 App Group profile 完成的临时开发签名包。iCloud KVS 真机行为仍需具备正确 capability 的正式 profile 后验证。
+5. 确认无误后再决定是否发布。
 
 ## 注意事项
 

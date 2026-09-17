@@ -110,17 +110,17 @@ remote-management:
 git clone https://github.com/LanrenwenStudio/AccessDeck.git
 cd AccessDeck
 xcodegen generate
-xcodebuild -scheme ClipBar -destination 'platform=macOS' test
+xcodebuild -scheme AccessDeck -destination 'platform=macOS' test
 ```
 
 日常本地 Debug 运行：
 
 ```bash
-xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=macOS' build
-open "$(xcodebuild -scheme ClipBar -configuration Debug -destination 'platform=macOS' -showBuildSettings | awk -F' = ' '/BUILT_PRODUCTS_DIR/{print $2; exit}')/ClipBar.app"
+xcodebuild -scheme AccessDeck -configuration Debug -destination 'platform=macOS' build
+open "$(xcodebuild -scheme AccessDeck -configuration Debug -destination 'platform=macOS' -showBuildSettings | awk -F' = ' '/BUILT_PRODUCTS_DIR/{print $2; exit}')/AccessDeck.app"
 ```
 
 ---
 
-Bundle ID：`com.lanrenwen.clipbar`（保留既有兼容标识）
+Bundle ID：`com.lanrenwen.accessdeck`（保留既有兼容标识）
 反馈与建议：[support@lanrenwen.com](mailto:support@lanrenwen.com) 或提交 GitHub Issue。

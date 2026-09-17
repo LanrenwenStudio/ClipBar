@@ -12,6 +12,6 @@ cask "accessdeck" do
   app "AccessDeck.app"
 
   zap trash: [
-    "~/Library/Preferences/com.lanrenwen.clipbar.plist",
+    "~/Library/Preferences/com.lanrenwen.accessdeck.plist",
   ]
 end

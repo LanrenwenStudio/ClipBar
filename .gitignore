@@ -9,7 +9,7 @@ xcuserdata/
 *.log
 *.profraw
 dist/
-ClipBar.xcodeproj/
+AccessDeck.xcodeproj/
 build/
 .pi/
 TODO.md

@@ -1,4 +1,4 @@
-name: ClipBar
+name: AccessDeck
 
 options:
   minimumXcodeGenVersion: 2.38.0
@@ -12,43 +12,43 @@ settings:
     DEVELOPMENT_TEAM: "X37879TD5Q"
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
-    PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar
+    PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.accessdeck
     MARKETING_VERSION: "0.1.1"
     CURRENT_PROJECT_VERSION: "2"
 
 targets:
-  ClipBar:
+  AccessDeck:
     type: application
     platform: macOS
-    productName: ClipBar
+    productName: AccessDeck
     sources:
-      - path: Sources/ClipBar
+      - path: Sources/AccessDeck
         excludes:
           - Resources/Icons/**
-          - Resources/ClipBarIcon.png
-          - Resources/ClipBarIcon.icns
-      - path: Sources/ClipBar/Resources/Icons
+          - Resources/AccessDeckIcon.png
+          - Resources/AccessDeckIcon.icns
+      - path: Sources/AccessDeck/Resources/Icons
         type: folder
         buildPhase: resources
-      - path: Sources/ClipBar/Resources/ClipBarIcon.icns
+      - path: Sources/AccessDeck/Resources/AccessDeckIcon.icns
         type: file
         buildPhase: resources
-      - path: Sources/ClipBarWidgets/SegmentedPillBar.swift
+      - path: Sources/AccessDeckWidgets/SegmentedPillBar.swift
         type: file
     settings:
       base:
-        PRODUCT_NAME: ClipBar
-        PRODUCT_MODULE_NAME: ClipBar
+        PRODUCT_NAME: AccessDeck
+        PRODUCT_MODULE_NAME: AccessDeck
         GENERATE_INFOPLIST_FILE: false
-        INFOPLIST_FILE: Sources/ClipBar/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Sources/ClipBar/ClipBar.entitlements
+        INFOPLIST_FILE: Sources/AccessDeck/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/AccessDeck/AccessDeck.entitlements
         DEVELOPMENT_TEAM: "X37879TD5Q"
         ENABLE_APP_SANDBOX: true
         ENABLE_HARDENED_RUNTIME: true
         COMBINE_HIDPI_IMAGES: true
         MACOSX_DEPLOYMENT_TARGET: "14.0"
     entitlements:
-      path: Sources/ClipBar/ClipBar.entitlements
+      path: Sources/AccessDeck/AccessDeck.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.network.client: true
@@ -56,73 +56,73 @@ targets:
     scheme:
       gatherCoverageData: true
       testTargets:
-        - ClipBarTests
+        - AccessDeckTests
 
-  ClipBar-iOS:
+  AccessDeck-iOS:
     type: application
     platform: iOS
-    productName: ClipBar
+    productName: AccessDeck
     sources:
-      - path: Sources/ClipBar
+      - path: Sources/AccessDeck
         excludes:
           - Info.plist
           - iOS/Info.plist
           - App/BackgroundRefreshScheduler.swift
           - Resources/Icons/**
-          - Resources/ClipBarIcon.png
-          - Resources/ClipBarIcon.icns
-      - path: Sources/ClipBar/Resources/Icons
+          - Resources/AccessDeckIcon.png
+          - Resources/AccessDeckIcon.icns
+      - path: Sources/AccessDeck/Resources/Icons
         type: folder
         buildPhase: resources
-      - path: Sources/ClipBar/Resources/Assets.xcassets
+      - path: Sources/AccessDeck/Resources/Assets.xcassets
         buildPhase: resources
-      - path: Sources/ClipBar/Resources/ClipBarIcon.png
+      - path: Sources/AccessDeck/Resources/AccessDeckIcon.png
         type: file
         buildPhase: resources
-      - path: Sources/ClipBar/App/BackgroundRefreshScheduler.swift
+      - path: Sources/AccessDeck/App/BackgroundRefreshScheduler.swift
         type: file
-      - path: Sources/ClipBarWidgets/SegmentedPillBar.swift
+      - path: Sources/AccessDeckWidgets/SegmentedPillBar.swift
         type: file
     settings:
       base:
-        PRODUCT_NAME: ClipBar
-        PRODUCT_MODULE_NAME: ClipBar
-        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.ios
+        PRODUCT_NAME: AccessDeck
+        PRODUCT_MODULE_NAME: AccessDeck
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.accessdeck.ios
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: false
-        INFOPLIST_FILE: Sources/ClipBar/iOS/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Sources/ClipBar/ClipBar-iOS.entitlements
+        INFOPLIST_FILE: Sources/AccessDeck/iOS/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/AccessDeck/AccessDeck-iOS.entitlements
         DEVELOPMENT_TEAM: "X37879TD5Q"
     entitlements:
-      path: Sources/ClipBar/ClipBar-iOS.entitlements
+      path: Sources/AccessDeck/AccessDeck-iOS.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.lanrenwen.clipbar
+          - group.com.lanrenwen.accessdeck
         com.apple.developer.ubiquity-kvstore-identifier: "$(TeamIdentifierPrefix)$(PRODUCT_BUNDLE_IDENTIFIER)"
     dependencies:
-      - target: ClipBarWidgets
+      - target: AccessDeckWidgets
     scheme:
       gatherCoverageData: true
 
-  ClipBarWidgets:
+  AccessDeckWidgets:
     type: app-extension
     platform: iOS
-    productName: ClipBarWidgets
+    productName: AccessDeckWidgets
     sources:
-      - path: Sources/ClipBarWidgets
+      - path: Sources/AccessDeckWidgets
         excludes:
           - Info.plist
-      - path: Sources/ClipBar/Models
-      - path: Sources/ClipBar/Settings/AppSettings.swift
-      - path: Sources/ClipBar/UI/ClipBarTheme.swift
-      - path: Sources/ClipBar/UI/ProviderGlyph.swift
-      - path: Sources/ClipBar/UI/ProviderIcon.swift
-      - path: Sources/ClipBar/Resources/Icons
+      - path: Sources/AccessDeck/Models
+      - path: Sources/AccessDeck/Settings/AppSettings.swift
+      - path: Sources/AccessDeck/UI/AccessDeckTheme.swift
+      - path: Sources/AccessDeck/UI/ProviderGlyph.swift
+      - path: Sources/AccessDeck/UI/ProviderIcon.swift
+      - path: Sources/AccessDeck/Resources/Icons
         type: folder
         buildPhase: resources
-      - path: Sources/ClipBar/Resources/Assets.xcassets
+      - path: Sources/AccessDeck/Resources/Assets.xcassets
         buildPhase: resources
     dependencies:
       - sdk: WidgetKit.framework
@@ -130,29 +130,29 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_NAME: ClipBarWidgets
-        PRODUCT_MODULE_NAME: ClipBarWidgets
-        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.ios.widgets
+        PRODUCT_NAME: AccessDeckWidgets
+        PRODUCT_MODULE_NAME: AccessDeckWidgets
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.accessdeck.ios.widgets
         GENERATE_INFOPLIST_FILE: false
-        INFOPLIST_FILE: Sources/ClipBarWidgets/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Sources/ClipBarWidgets/ClipBarWidgets.entitlements
+        INFOPLIST_FILE: Sources/AccessDeckWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/AccessDeckWidgets/AccessDeckWidgets.entitlements
     entitlements:
-      path: Sources/ClipBarWidgets/ClipBarWidgets.entitlements
+      path: Sources/AccessDeckWidgets/AccessDeckWidgets.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.lanrenwen.clipbar
-  ClipBarTests:
+          - group.com.lanrenwen.accessdeck
+  AccessDeckTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: Tests/ClipBarTests
+      - path: Tests/AccessDeckTests
     dependencies:
-      - target: ClipBar
+      - target: AccessDeck
     settings:
       base:
-        PRODUCT_NAME: ClipBarTests
-        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.clipbar.tests
+        PRODUCT_NAME: AccessDeckTests
+        PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.accessdeck.tests
         GENERATE_INFOPLIST_FILE: true
         MACOSX_DEPLOYMENT_TARGET: "14.0"
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/ClipBar.app/Contents/MacOS/ClipBar"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/AccessDeck.app/Contents/MacOS/AccessDeck"
         BUNDLE_LOADER: "$(TEST_HOST)"

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT_PATH="$ROOT_DIR/ClipBar.xcodeproj"
-SCHEME="ClipBar"
+PROJECT_PATH="$ROOT_DIR/AccessDeck.xcodeproj"
+SCHEME="AccessDeck"
 APP_NAME="AccessDeck"
 BUILD_STAMP="$(date +%Y%m%d-%H%M%S)-$$"
 WORK_DIR="$ROOT_DIR/.build/package/$BUILD_STAMP"
@@ -17,7 +17,7 @@ DIST_DIR="$ROOT_DIR/dist"
 PACKAGE_FILENAME="${PACKAGE_FILENAME:-}"
 DISTRIBUTION_MODE="${DISTRIBUTION_MODE:-local}"
 DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:-X37879TD5Q}"
-DEVELOPER_IDENTITY="${DEVELOPER_IDENTITY:-6642B7BEA10EFDAFC9E813E6C2BB98358AE46AF6}"
+DEVELOPER_IDENTITY="${DEVELOPER_IDENTITY:-8C475C2F514BF012B8AD44636C56EBA69B954125}"
 DEVID_KEYCHAIN="${DEVID_KEYCHAIN:-}"
 
 require_command() {
@@ -53,7 +53,12 @@ build_developer_id_app() {
   fi
 
   local signing_keychain="${DEVID_KEYCHAIN:-}"
-  if ! security find-certificate -a -c "Developer ID Application:" ${signing_keychain:+"$signing_keychain"} >/dev/null 2>&1; then
+  local signing_keychain_args=()
+  local codesign_keychain_args=(--keychain "${signing_keychain:-$HOME/Library/Keychains/login.keychain-db}")
+  if [[ -n "$signing_keychain" ]]; then
+    signing_keychain_args=("$signing_keychain")
+  fi
+  if ! security find-certificate -a -c "Developer ID Application:" "${signing_keychain_args[@]}" >/dev/null 2>&1; then
     echo "No Developer ID Application identity is available in the current keychain." >&2
     exit 1
   fi
@@ -68,7 +73,7 @@ build_developer_id_app() {
     DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
     CODE_SIGN_STYLE=Manual \
     CODE_SIGN_IDENTITY="$DEVELOPER_IDENTITY" \
-    ${signing_keychain:+OTHER_CODE_SIGN_FLAGS="--keychain $signing_keychain"}
+    OTHER_CODE_SIGN_FLAGS="--keychain ${signing_keychain:-$HOME/Library/Keychains/login.keychain-db}"
 
   cat >"$EXPORT_OPTIONS_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -179,7 +184,7 @@ main() {
 
   if [[ "$DISTRIBUTION_MODE" == "developer-id" ]]; then
     echo "Signing DMG package with Developer ID..."
-    codesign --force --timestamp --sign "$DEVELOPER_IDENTITY" "$working_package_path"
+    codesign --force --timestamp --sign "$DEVELOPER_IDENTITY" "${codesign_keychain_args[@]}" "$working_package_path"
 
     if [[ -n "${NOTARYTOOL_KEY_PATH:-}" ]]; then
       xcrun notarytool submit "$working_package_path" --key "$NOTARYTOOL_KEY_PATH" --key-id "$NOTARYTOOL_KEY_ID" --issuer "$NOTARYTOOL_ISSUER_ID" --wait
