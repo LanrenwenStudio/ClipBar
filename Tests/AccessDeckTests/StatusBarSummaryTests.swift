@@ -153,6 +153,36 @@ struct StatusBarSummaryTests {
         #expect(segments.map(\.provider) == [.antigravity])
     }
 
+    @Test("Codex stays visible when 5h is empty but weekly remains")
+    func keepsCodexWhenWeeklyRemains() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [0, 42], windowIDs: ["5h", "7d"])
+        ]
+        var both = AppSettings.default
+        both.statusQuotaDisplay = .both
+
+        let defaultSegments = StatusBarSummary.segments(from: rows, settings: .default)
+        let bothSegments = StatusBarSummary.segments(from: rows, settings: both)
+
+        #expect(defaultSegments.map(\.provider) == [.codex])
+        #expect(defaultSegments.first?.displayTitle == "0%")
+        #expect(bothSegments.map(\.provider) == [.codex])
+        #expect(bothSegments.first?.displayTitle == "0% / 42%")
+    }
+
+    @Test("Menu bar hides a provider only when 5h and weekly are both empty")
+    func hidesWhenBothQuotaWindowsAreExhausted() {
+        let rows = [
+            row(id: "c1", provider: .codex, remaining: [0, 0], windowIDs: ["5h", "7d"]),
+            row(id: "ag1", provider: .antigravity, remaining: [0, 80], windowIDs: ["5h", "7d"])
+        ]
+        var settings = AppSettings.default
+        settings.statusQuotaDisplay = .both
+        let segments = StatusBarSummary.segments(from: rows, settings: settings)
+        #expect(segments.map(\.provider) == [.antigravity])
+        #expect(segments.first?.displayTitle == "0% / 80%")
+    }
+
     @Test("Zero remaining providers hide by default")
     func hidesEmptyByDefault() {
         let rows = [

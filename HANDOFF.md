@@ -31,7 +31,7 @@
 - `AppModel` 监听云端设置变更，更新设置、重启轮询、刷新账户数据并同步 Widget 状态。
 - `AppSettings`、`AppTheme`、`StatusQuotaDisplay`、`StatusQuotaWindow` 已支持 `Codable`。
 - 已加入 macOS/iOS 的 `com.apple.developer.ubiquity-kvstore-identifier` entitlement。
-- 额度快照通过 CLIProxyAPI 直连或 `clipbar-quota` 插件获取，不放入 iCloud KVS；Widget/cache 仍走现有本地 App Group 路径。
+- 额度快照通过 CLIProxyAPI 直连获取，不放入 iCloud KVS；Widget/cache 仍走现有本地 App Group 路径。
 
 ### 敏感凭据
 
@@ -76,9 +76,8 @@
 - `Sources/AccessDeck/iOS/Views/DashboardView.swift`
 - `Sources/AccessDeck/iOS/Views/ServerSettingsView.swift`
 - `Tests/AccessDeckTests/AppSettingsTests.swift`
-- `Tests/AccessDeckTests/QuotaConnectionTests.swift`（新增）
+- `Tests/AccessDeckTests/QuotaConnectionTests.swift`
 - `project.yml`
-- `Integrations/clipbar-quota-plugin/`（新增）
 - `HANDOFF.md`（本文件）
 - 旧 `backend/` 独立服务及 `QuotaBackendClient.swift` 已删除
 
@@ -157,4 +156,4 @@ xcodegen generate
 
 - 不要把真实 `managementKey`、`backendAccessToken` 写进 handoff、日志或提交内容。
 - UI 和真机交互效果尚未由 Agent 截图或自动点击验证，应由用户实际验收。
-- 共享额度数据不再依赖独立 backend：macOS 与 iOS 分别通过配置的 CPA 直连或 `clipbar-quota` 插件连接刷新，并通过本地 App Group 缓存与 Widget 共享快照；合法的 provider `/v1/...` 接口仍由 provider 适配器直接调用。
+- 共享额度数据通过 CLIProxyAPI 直连刷新，并通过本地 App Group 缓存与 Widget 共享快照；合法的 provider `/v1/...` 接口由 provider 适配器直接调用。

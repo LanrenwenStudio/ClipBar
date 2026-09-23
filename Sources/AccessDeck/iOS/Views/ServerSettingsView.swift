@@ -76,24 +76,6 @@ struct ServerSettingsView: View {
             }
             .padding(.vertical, 4)
 
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("连接方式", "Connection Mode"))
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-
-                Picker(L10n.t("连接方式", "Connection Mode"), selection: $draft.connectionMode) {
-                    Text(L10n.t("直连", "Direct"))
-                        .tag(QuotaConnectionMode.direct)
-                    Text(L10n.t("插件", "Plugin"))
-                        .tag(QuotaConnectionMode.plugin)
-                }
-                .pickerStyle(.segmented)
-
-                Text(draft.connectionMode.description)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.vertical, 4)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.t("管理密钥", "Management Key"))
@@ -123,30 +105,23 @@ struct ServerSettingsView: View {
         } header: {
             Text(L10n.t("CLIProxyAPI 连接", "CLIProxyAPI Connection"))
         } footer: {
-            Text(L10n.t("直连模式由 AccessDeck 探测额度；插件模式读取 CPA 中已安装并启用的 clipbar-quota 插件。", "Direct mode probes quotas from AccessDeck; plugin mode reads the installed and enabled clipbar-quota plugin in CPA."))
+            Text(L10n.t("AccessDeck 通过 CLIProxyAPI 管理接口直接探测额度。", "AccessDeck probes quotas directly through the CLIProxyAPI management API."))
         }
     }
 
     private var currentConnectionMethodRow: some View {
         HStack(spacing: 8) {
-            Image(systemName: model.settings.isConfigured ? model.settings.connectionMode.systemImage : "questionmark.circle")
+            Image(systemName: model.settings.isConfigured ? "arrow.left.arrow.right" : "questionmark.circle")
                 .foregroundStyle(model.settings.isConfigured ? AccessDeckTheme.accent : .secondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(L10n.t("当前连接方式", "Current Connection Method"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(connectionMethodTitle)
+                Text(model.settings.isConfigured ? L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI") : L10n.t("尚未配置", "Not configured"))
                     .font(.subheadline.weight(.medium))
             }
             Spacer()
         }
-    }
-
-    private var connectionMethodTitle: String {
-        guard model.settings.isConfigured else {
-            return L10n.t("尚未配置", "Not configured")
-        }
-        return model.settings.connectionMode.displayName
     }
 
     // MARK: - Diagnosis Section
@@ -321,14 +296,15 @@ struct ServerSettingsView: View {
             do {
                 let result = try await QuotaConnectionFactory().make(settings: testSettings).refresh(force: true)
                 let rows = result.accounts
-                if let error = result.error {
-                    throw QuotaConnectionError.plugin(error)
-                }
                 let end = DispatchTime.now()
                 let nanoTime = end.uptimeNanoseconds - start.uptimeNanoseconds
                 let latencyMs = Int(nanoTime / 1_000_000)
                 await MainActor.run {
-                    testResult = .success(accountsCount: rows.count, latencyMs: latencyMs)
+                    if result.error != nil {
+                        testResult = .error(L10n.t("额度刷新返回错误", "Quota refresh returned an error"))
+                    } else {
+                        testResult = .success(accountsCount: rows.count, latencyMs: latencyMs)
+                    }
                     isTesting = false
                 }
             } catch {

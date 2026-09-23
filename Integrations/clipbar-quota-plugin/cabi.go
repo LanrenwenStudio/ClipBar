@@ -247,14 +247,26 @@ type lifecycleRequest struct {
 	SchemaVersion uint32 `json:"schema_version"`
 }
 
+var lastRegisteredSchemaVersion uint32
+
 func handleMethod(method string, request []byte) ([]byte, error) {
 	switch method {
-	case clipbarquota.MethodPluginRegister, clipbarquota.MethodPluginReconfigure:
+	case clipbarquota.MethodPluginRegister:
+		var req lifecycleRequest
+		if len(request) > 0 {
+			_ = json.Unmarshal(request, &req)
+		}
+		if req.SchemaVersion > 0 {
+			lastRegisteredSchemaVersion = req.SchemaVersion
+		}
 		if err := configureRuntime(request); err != nil {
 			return nil, err
 		}
-		return okEnvelope(clipbarquota.Registration())
-	case clipbarquota.MethodPluginShutdown:
+		return okEnvelope(clipbarquota.Registration(lastRegisteredSchemaVersion))
+	case clipbarquota.MethodPluginReconfigure:
+		if err := configureRuntime(request); err != nil {
+			return nil, err
+		}
 		return okEnvelope(map[string]any{})
 	case clipbarquota.MethodManagementRegister:
 		return okEnvelope(clipbarquota.ManagementRegistration())
@@ -272,8 +284,8 @@ func configureRuntime(raw []byte) error {
 			return fmt.Errorf("decode lifecycle request: %w", err)
 		}
 	}
-	if request.SchemaVersion > uint32(clipbarquota.SchemaVersion) {
-		return fmt.Errorf("unsupported plugin schema version %d", request.SchemaVersion)
+	if request.SchemaVersion > 0 {
+		lastRegisteredSchemaVersion = request.SchemaVersion
 	}
 	plugin := runtimePlugin()
 	if err := plugin.ConfigureYAML(request.ConfigYAML); err != nil {

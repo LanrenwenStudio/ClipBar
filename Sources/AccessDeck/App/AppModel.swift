@@ -340,7 +340,6 @@ final class AppModel {
     func saveSettings(_ next: AppSettings) {
         settings.baseURL = next.normalizedBaseURL
         settings.managementKey = next.normalizedManagementKey
-        settings.connectionMode = next.connectionMode
         settings.refreshSeconds = next.clampedRefreshSeconds
         settings.statusQuotaWindow = next.statusQuotaWindow
         settings.sortByRemainingQuota = next.sortByRemainingQuota

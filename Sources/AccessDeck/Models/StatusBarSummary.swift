@@ -83,10 +83,11 @@ enum StatusBarSummary {
             let shownWeekly = display == .fiveHour ? nil : weeklyRemaining
             let fiveHourResetText = display == .weekly ? nil : nearestResetText(in: rows, window: .fiveHour)
             let remaining = pooledRemaining(in: rows, preferredWindow: settings.statusQuotaWindow, settings: settings)
-            if let emptyCheckRemaining = display == .fiveHour ? (fiveHourRemaining ?? remaining)
-                : display == .weekly ? (weeklyRemaining ?? remaining)
-                : remaining,
-               QuotaDisplayScale.isExhausted(emptyCheckRemaining) {
+            if shouldHideExhaustedProvider(
+                fiveHourRemaining: fiveHourRemaining,
+                weeklyRemaining: weeklyRemaining,
+                remaining: remaining
+            ) {
                 return nil
             }
             return StatusSegment(
@@ -155,6 +156,25 @@ enum StatusBarSummary {
         }
         if !preferFiveHourForProvider, !hasData { return nil }
         return remainingUnits / Double(enabled.count) * 100
+    }
+
+    /// Hide a provider only when every known 5-hour and weekly window is exhausted.
+    /// A remaining sibling window, including Codex weekly after the 5-hour plan hits 0, stays visible.
+    private static func shouldHideExhaustedProvider(
+        fiveHourRemaining: Double?,
+        weeklyRemaining: Double?,
+        remaining: Double?
+    ) -> Bool {
+        switch (fiveHourRemaining, weeklyRemaining) {
+        case let (fiveHour?, weekly?):
+            QuotaDisplayScale.isExhausted(fiveHour) && QuotaDisplayScale.isExhausted(weekly)
+        case let (fiveHour?, nil):
+            QuotaDisplayScale.isExhausted(fiveHour)
+        case let (nil, weekly?):
+            QuotaDisplayScale.isExhausted(weekly)
+        case (nil, nil):
+            remaining.map { QuotaDisplayScale.isExhausted($0) } ?? false
+        }
     }
 
     private static func effectiveWindow(
@@ -227,7 +247,6 @@ enum StatusBarSummary {
             preferredIDs = ["7d", "week", "weekly", "seven-day"]
             fallbackIDs = ["5h", "five-hour", "5-hour"]
         }
-
         if let preferred = windows.first(where: { preferredIDs.contains($0.id) })?.remainingPercent {
             return [preferred]
         }

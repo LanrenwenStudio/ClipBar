@@ -195,22 +195,6 @@ struct SettingsView: View {
                         }
                     }
 
-                    SettingsField(title: L10n.t("连接方式", "Connection Mode")) {
-                        Picker(L10n.t("连接方式", "Connection Mode"), selection: $draft.connectionMode) {
-                            ForEach(QuotaConnectionMode.allCases) { mode in
-                                Text(mode.displayName).tag(mode)
-                            }
-                        }
-                        .labelsHidden()
-                        .pickerStyle(.segmented)
-                        .controlSize(.small)
-
-                        Text(draft.connectionMode.description)
-                            .font(.system(size: 9.5))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.top, 1)
-                    }
 
                     RefreshIntervalPicker(seconds: $draft.refreshSeconds)
                 }

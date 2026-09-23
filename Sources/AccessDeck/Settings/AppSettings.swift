@@ -46,51 +46,11 @@ enum StatusQuotaDisplay: String, CaseIterable, Identifiable, Sendable, Codable {
         }
     }
 }
-
-enum QuotaConnectionMode: String, CaseIterable, Identifiable, Sendable, Codable {
-    case direct = "direct"
-    case plugin = "plugin"
-
-    var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .direct:
-            L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI")
-        case .plugin:
-            L10n.t("CLIProxyAPI Quota 插件", "CLIProxyAPI quota plugin")
-        }
-    }
-
-    var description: String {
-        switch self {
-        case .direct:
-            L10n.t(
-                "由 AccessDeck 通过 CLIProxyAPI 管理接口读取账号并探测额度。",
-                "AccessDeck reads auth entries and probes quotas through the CLIProxyAPI management API."
-            )
-        case .plugin:
-            L10n.t(
-                "读取 CLIProxyAPI 的 clipbar-quota 插件；需要先在 CPA 中安装并启用插件。",
-                "Reads the clipbar-quota plugin; install and enable it in CPA first."
-            )
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .direct: "arrow.left.arrow.right"
-        case .plugin: "puzzlepiece.extension"
-        }
-    }
-}
-
 struct AppSettings: Equatable, Sendable, Codable {
     static let refreshIntervalPresets = [60, 180, 300, 600, 900]
 
     var baseURL: String
     var managementKey: String
-    var connectionMode: QuotaConnectionMode
     var refreshSeconds: Int
     var statusItemOrder: [String]
     var hiddenStatusItemIDs: [String]
@@ -108,7 +68,6 @@ struct AppSettings: Equatable, Sendable, Codable {
     static let `default` = AppSettings(
         baseURL: Self.defaultBaseURL,
         managementKey: "",
-        connectionMode: .direct,
         refreshSeconds: 300,
         statusItemOrder: [],
         hiddenStatusItemIDs: [],
@@ -125,7 +84,6 @@ struct AppSettings: Equatable, Sendable, Codable {
     init(
         baseURL: String,
         managementKey: String,
-        connectionMode: QuotaConnectionMode,
         refreshSeconds: Int,
         statusItemOrder: [String],
         hiddenStatusItemIDs: [String],
@@ -140,7 +98,6 @@ struct AppSettings: Equatable, Sendable, Codable {
     ) {
         self.baseURL = baseURL
         self.managementKey = managementKey
-        self.connectionMode = connectionMode
         self.refreshSeconds = refreshSeconds
         self.statusItemOrder = statusItemOrder
         self.hiddenStatusItemIDs = hiddenStatusItemIDs
@@ -226,7 +183,6 @@ struct AppSettings: Equatable, Sendable, Codable {
     // SettingsSecretStore and must never enter an iCloud KVS payload.
     private enum CodingKeys: String, CodingKey {
         case baseURL
-        case connectionMode
         case refreshSeconds
         case statusItemOrder
         case hiddenStatusItemIDs
@@ -245,7 +201,6 @@ struct AppSettings: Equatable, Sendable, Codable {
         self.init(
             baseURL: try container.decodeIfPresent(String.self, forKey: .baseURL) ?? "",
             managementKey: "",
-            connectionMode: try container.decodeIfPresent(QuotaConnectionMode.self, forKey: .connectionMode) ?? .direct,
             refreshSeconds: try container.decodeIfPresent(Int.self, forKey: .refreshSeconds) ?? 300,
             statusItemOrder: try container.decodeIfPresent([String].self, forKey: .statusItemOrder) ?? [],
             hiddenStatusItemIDs: try container.decodeIfPresent([String].self, forKey: .hiddenStatusItemIDs) ?? [],
@@ -263,7 +218,6 @@ struct AppSettings: Equatable, Sendable, Codable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(baseURL, forKey: .baseURL)
-        try container.encode(connectionMode, forKey: .connectionMode)
         try container.encode(refreshSeconds, forKey: .refreshSeconds)
         try container.encode(statusItemOrder, forKey: .statusItemOrder)
         try container.encode(hiddenStatusItemIDs, forKey: .hiddenStatusItemIDs)

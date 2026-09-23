@@ -19,7 +19,6 @@ struct AppSettingsTests {
     @Test("Direct CLIProxyAPI URL defaults to the LAN management endpoint")
     func directURLDefaultsToCPA() {
         #expect(AppSettings.default.baseURL == "http://192.168.1.3:8317")
-        #expect(AppSettings.default.connectionMode == .direct)
     }
 
     @Test("Status quota window defaults to 5h")

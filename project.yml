@@ -91,7 +91,6 @@ targets:
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: Sources/AccessDeck/iOS/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/AccessDeck/AccessDeck-iOS.entitlements
         DEVELOPMENT_TEAM: "X37879TD5Q"
@@ -130,12 +129,10 @@ targets:
       - sdk: AppIntents.framework
     settings:
       base:
-        PRODUCT_NAME: AccessDeckWidgets
         PRODUCT_MODULE_NAME: AccessDeckWidgets
         PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.accessdeck.ios.widgets
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: Sources/AccessDeckWidgets/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Sources/AccessDeckWidgets/AccessDeckWidgets.entitlements
     entitlements:
       path: Sources/AccessDeckWidgets/AccessDeckWidgets.entitlements
       properties:

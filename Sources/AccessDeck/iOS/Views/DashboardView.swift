@@ -349,14 +349,14 @@ struct DashboardView: View {
     }
 
     private var connectionMethodIcon: String {
-        model.settings.isConfigured ? model.settings.connectionMode.systemImage : "questionmark.circle"
+        model.settings.isConfigured ? "arrow.left.arrow.right" : "questionmark.circle"
     }
 
     private var connectionMethodTitle: String {
         guard model.settings.isConfigured else {
-            return L10n.t("尚未配置连接方式", "No connection method configured")
+            return L10n.t("尚未配置", "Not configured")
         }
-        return model.settings.connectionMode.displayName
+        return L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI")
     }
 
     private var lowestQuotaText: String {

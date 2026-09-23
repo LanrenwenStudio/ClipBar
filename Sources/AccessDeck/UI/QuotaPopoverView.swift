@@ -32,18 +32,11 @@ struct QuotaPopoverView: View {
 
             Spacer(minLength: 4)
 
-            Button(action: refresh) {
-                Image(systemName: "arrow.clockwise")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .rotationEffect(.degrees(model.connection.isRefreshing ? 360 : 0))
-                    .animation(
-                        model.connection.isRefreshing ? .linear(duration: 1).repeatForever(autoreverses: false) : .default,
-                        value: model.connection.isRefreshing
-                    )
-            }
-            .buttonStyle(.plain)
-            .disabled(!model.settings.isConfigured || model.connection.isRefreshing)
+            RefreshToolbarButton(
+                isRefreshing: model.connection.isRefreshing,
+                isEnabled: model.settings.isConfigured,
+                action: refresh
+            )
             .help(L10n.t("刷新额度", "Refresh quotas"))
         }
         .padding(.horizontal, 2)

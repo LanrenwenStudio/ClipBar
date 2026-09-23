@@ -38,7 +38,6 @@ final class SettingsStore {
     private enum Key {
         static let baseURL = "clipbar.baseURL"
         static let managementKey = "clipbar.managementKey"
-        static let connectionMode = "clipbar.connectionMode"
         static let legacyBackendURL = "clipbar.backendURL"
         static let legacyBackendAccessToken = "clipbar.backendAccessToken"
         static let refreshSeconds = "clipbar.refreshSeconds"
@@ -120,10 +119,7 @@ final class SettingsStore {
                 defaults.removeObject(forKey: Key.managementKey)
             }
         }
-        if let rawMode = defaults.string(forKey: Key.connectionMode),
-           let mode = QuotaConnectionMode(rawValue: rawMode) {
-            settings.connectionMode = mode
-        }
+        defaults.removeObject(forKey: "clipbar.connectionMode")
         secretStore.removeLegacyAccessToken()
         removeLegacyBackendSettings()
         let refresh = defaults.integer(forKey: Key.refreshSeconds)
@@ -210,7 +206,6 @@ final class SettingsStore {
            secretStore.saveManagementKey(settings.normalizedManagementKey) {
             defaults.removeObject(forKey: Key.managementKey)
         }
-        defaults.set(settings.connectionMode.rawValue, forKey: Key.connectionMode)
         removeLegacyBackendSettings()
         defaults.set(settings.clampedRefreshSeconds, forKey: Key.refreshSeconds)
         defaults.set(settings.statusItemOrder, forKey: Key.statusItemOrder)

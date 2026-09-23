@@ -291,9 +291,13 @@ func (p *Plugin) SetHost(host Host) {
 	p.mu.Unlock()
 }
 
-func Registration() RegistrationPayload {
+func Registration(schemaVersion ...uint32) RegistrationPayload {
+	v := uint32(SchemaVersion)
+	if len(schemaVersion) > 0 && schemaVersion[0] > 0 {
+		v = schemaVersion[0]
+	}
 	return RegistrationPayload{
-		SchemaVersion: SchemaVersion,
+		SchemaVersion: v,
 		Metadata: Metadata{
 			Name:             PluginID,
 			Version:          "0.1.0",
