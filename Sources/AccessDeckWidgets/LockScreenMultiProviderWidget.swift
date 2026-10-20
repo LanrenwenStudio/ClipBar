@@ -6,8 +6,9 @@ struct LockScreenMultiProviderWidget: Widget {
     static let kind: String = "LockScreenMultiProviderWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(
+        AppIntentConfiguration(
             kind: Self.kind,
+            intent: MultiProviderIntent.self,
             provider: MultiProviderTimelineProvider()
         ) { entry in
             LockScreenMultiProviderView(entry: entry)
@@ -79,66 +80,85 @@ struct LockScreenMultiProviderView: View {
     }
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
-        let displayName = p.provider == .antigravity ? "Agy" : p.displayName
         let split = splitQuotaWindows(for: p)
         let primaryPercent = min(100, max(0, p.remainingPercent ?? 0))
 
         let barPercent = split?.weekly ?? primaryPercent
 
-        return HStack(alignment: .center, spacing: 3.5) {
-            // 1. 左侧：图标 + 渠道名
+        return HStack(alignment: .center, spacing: 3.0) {
+            // 1. 图标、渠道名或重置卡微胶囊
             HStack(spacing: 2.0) {
-                ProviderGlyph(provider: p.provider, size: 9.5)
-                    .frame(width: 9.5, height: 9.5)
-                Text(displayName)
-                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                ProviderGlyph(provider: p.provider, size: 9.0)
+                    .frame(width: 9.0, height: 9.0)
+                if entry.showResetCredits, p.provider == .codex, let credits = p.resetCreditCount, credits > 0 {
+                    ResetCreditPill(count: credits, isAccent: false, fontSize: 6.0, iconSize: 5.0)
+                } else {
+                    Text(p.provider == .antigravity ? "Agy" : p.displayName)
+                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
             }
-            .frame(width: 42, alignment: .leading)
+            .frame(width: 33, alignment: .leading)
 
-            // 2. 中间：分段胶囊进度条
-            SegmentedPillBar(
-                percent: barPercent,
-                totalSegments: 10,
-                barHeight: 7.5,
-                segmentSpacing: 1.4,
-                cornerRadius: 0.8,
-                activeColor: .primary,
-                inactiveColor: Color.primary.opacity(0.18)
-            )
-            .frame(width: 38)
+            // 2. 中间：进度条（宽度扩展至 36pt，自动吸收多余空白，消除稀疏感）
+            VStack(spacing: 1) {
+                if entry.style == .continuous {
+                    ContinuousPillBar(
+                        percent: barPercent,
+                        barHeight: 6.5,
+                        cornerRadius: 1.8,
+                        activeColor: .primary,
+                        inactiveColor: Color.primary.opacity(0.18)
+                    )
+                    .frame(width: 36)
+                } else {
+                    SegmentedPillBar(
+                        percent: barPercent,
+                        totalSegments: 10,
+                        barHeight: 6.5,
+                        segmentSpacing: 1.2,
+                        cornerRadius: 0.7,
+                        activeColor: .primary,
+                        inactiveColor: Color.primary.opacity(0.18)
+                    )
+                    .frame(width: 36)
+                }
+            }
+            .frame(width: 36)
 
-            Spacer(minLength: 0)
-
-            // 3. 右侧数值：与状态栏统一的 5 小时胶囊风格
+            Spacer(minLength: 4)
+            // 3. 右侧数值：5h 胶囊 + 周额度（采用 monospacedDigit 紧凑排布，确保 100% 不溢出）
             Group {
                 if let split {
-                    HStack(spacing: 2.0) {
+                    HStack(spacing: 1.5) {
                         HStack(spacing: 1.0) {
                             Text("\(Int(split.fiveHour.rounded()))%")
-                                .font(.system(size: 8.0, weight: .bold, design: .rounded))
+                                .font(.system(size: 7.2, weight: .bold, design: .rounded))
+                                .monospacedDigit()
                             Text(p.nearestFiveHourDisplayText ?? "5h")
-                                .font(.system(size: 6.5, weight: .semibold, design: .rounded))
+                                .font(.system(size: 6.0, weight: .semibold, design: .rounded))
                                 .foregroundStyle(.secondary)
                         }
-                        .padding(.horizontal, 3.0)
-                        .padding(.vertical, 1.0)
+                        .padding(.horizontal, 2.5)
+                        .padding(.vertical, 0.8)
                         .background(
                             Capsule()
                                 .fill(Color.primary.opacity(0.12))
                         )
 
                         Text("/")
-                            .font(.system(size: 6.5, weight: .regular))
+                            .font(.system(size: 6.0, weight: .regular))
                             .foregroundStyle(.secondary)
 
                         Text("\(Int(split.weekly.rounded()))%")
-                            .font(.system(size: 8.0, weight: .bold, design: .rounded))
+                            .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                            .monospacedDigit()
                     }
                 } else {
                     Text("\(Int(primaryPercent.rounded()))%")
-                        .font(.system(size: 9.0, weight: .bold, design: .rounded))
+                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                        .monospacedDigit()
                 }
             }
             .lineLimit(1)

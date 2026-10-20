@@ -56,6 +56,7 @@ final class WidgetDataStore: @unchecked Sendable {
         var providerDataList: [ProviderWidgetData] = []
 
         for provider in ordered {
+            guard !settings.isProviderHidden(provider) else { continue }
             let pAccounts = accounts.filter { $0.account.provider == provider }
             guard !pAccounts.isEmpty else { continue }
 
@@ -125,7 +126,8 @@ final class WidgetDataStore: @unchecked Sendable {
                 accountCount: pAccounts.count,
                 healthyCount: healthyCount,
                 statusText: statusText,
-                windows: Array(windows.prefix(2))
+                windows: Array(windows.prefix(2)),
+                resetCreditCount: provider == .codex ? ProviderWidgetData.pooledResetCreditCount(in: pAccounts, settings: settings) : nil
             ))
         }
 

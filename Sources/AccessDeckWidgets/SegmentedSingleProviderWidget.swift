@@ -9,6 +9,7 @@ import UIKit
 struct SegmentedSingleProviderQuotaCard: View {
     let entry: SingleProviderEntry
     let provider: ProviderWidgetData
+    var showResetCredits: Bool = true
 
     private var splitWindows: (fiveHour: QuotaWindowSummary, weekly: QuotaWindowSummary)? {
         guard let fiveHour = provider.windows.first(where: isFiveHourWindow),
@@ -65,11 +66,15 @@ struct SegmentedSingleProviderQuotaCard: View {
                 ProviderGlyph(provider: provider.provider, size: 16, tint: .primary)
                     .frame(width: 16, height: 16)
 
-                Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
-                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
+                if showResetCredits, provider.provider == .codex, let count = provider.resetCreditCount, count > 0 {
+                    ResetCreditPill(count: count, isAccent: true, fontSize: 9.5, iconSize: 8.0)
+                } else {
+                    Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
+                        .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
 
                 Spacer(minLength: 4)
 
@@ -151,6 +156,7 @@ struct SegmentedSingleProviderQuotaCard: View {
                 }
             }
 
+
             Spacer(minLength: 6)
 
             // 3. 分段进度条：细致高密度竖条阵列（32段、高度16pt、细密间隔2.2pt、微倒角1.0pt）
@@ -227,7 +233,7 @@ struct SegmentedSingleProviderWidgetView: View {
         if !entry.snapshot.isConfigured || entry.snapshot.providers.isEmpty {
             unconfiguredView
         } else if let provider = targetProvider {
-            SegmentedSingleProviderQuotaCard(entry: entry, provider: provider)
+            SegmentedSingleProviderQuotaCard(entry: entry, provider: provider, showResetCredits: entry.showResetCredits)
         } else {
             noDataForSelectedProviderView
         }

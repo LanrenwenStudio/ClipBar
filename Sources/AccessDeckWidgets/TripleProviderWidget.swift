@@ -7,28 +7,53 @@ import UIKit
 struct MultiProviderEntry: TimelineEntry {
     let date: Date
     let snapshot: AccessDeckWidgetSnapshot
+    let style: WidgetProgressBarStyle
+    let showResetCredits: Bool
+
+    init(
+        date: Date,
+        snapshot: AccessDeckWidgetSnapshot,
+        style: WidgetProgressBarStyle = .segmented,
+        showResetCredits: Bool = true
+    ) {
+        self.date = date
+        self.snapshot = snapshot
+        self.style = style
+        self.showResetCredits = showResetCredits
+    }
 }
 
 // Backward compatibility alias
 typealias TripleProviderEntry = MultiProviderEntry
 
-struct MultiProviderTimelineProvider: TimelineProvider {
+struct MultiProviderTimelineProvider: AppIntentTimelineProvider {
     typealias Entry = MultiProviderEntry
+    typealias Intent = MultiProviderIntent
 
     func placeholder(in context: Context) -> MultiProviderEntry {
-        MultiProviderEntry(date: Date(), snapshot: .preview)
+        MultiProviderEntry(date: Date(), snapshot: .preview, style: .segmented, showResetCredits: true)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (MultiProviderEntry) -> Void) {
+    func snapshot(for configuration: MultiProviderIntent, in context: Context) async -> MultiProviderEntry {
         let snapshot = WidgetDataStore.shared.loadSnapshot()
-        completion(MultiProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot))
+        return MultiProviderEntry(
+            date: Date(),
+            snapshot: snapshot.providers.isEmpty ? .preview : snapshot,
+            style: configuration.style,
+            showResetCredits: configuration.showResetCredits
+        )
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<MultiProviderEntry>) -> Void) {
+    func timeline(for configuration: MultiProviderIntent, in context: Context) async -> Timeline<MultiProviderEntry> {
         let snapshot = WidgetDataStore.shared.loadSnapshot()
-        let entry = MultiProviderEntry(date: Date(), snapshot: snapshot.providers.isEmpty ? .preview : snapshot)
+        let entry = MultiProviderEntry(
+            date: Date(),
+            snapshot: snapshot.providers.isEmpty ? .preview : snapshot,
+            style: configuration.style,
+            showResetCredits: configuration.showResetCredits
+        )
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
-        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+        return Timeline(entries: [entry], policy: .after(nextUpdate))
     }
 }
 
@@ -148,11 +173,15 @@ struct MultiProviderWidgetView: View {
                 ProviderGlyph(provider: p.provider, size: glyphSize, tint: .primary)
                     .frame(width: glyphSize, height: glyphSize)
 
-                Text(p.provider == .antigravity ? "Agy" : p.displayName)
-                    .font(.system(size: count >= 4 ? 10.5 : 11.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                if entry.showResetCredits, p.provider == .codex, let credits = p.resetCreditCount, credits > 0 {
+                    ResetCreditPill(count: credits, isAccent: true, fontSize: 8.5, iconSize: 7.0)
+                } else {
+                    Text(p.provider == .antigravity ? "Agy" : p.displayName)
+                        .font(.system(size: count >= 4 ? 10.0 : 11.0, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
 
                 Spacer(minLength: 4)
 
@@ -169,11 +198,16 @@ struct MultiProviderWidgetView: View {
                             Text(compactPercent(splitWindows.fiveHour))
                                 .font(.system(size: max(6.5, percentFontSize - 2.5), weight: .bold, design: .rounded))
                                 .monospacedDigit()
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .foregroundStyle(badgeTint)
                             Text(p.nearestFiveHourDisplayText ?? "5h")
                                 .font(.system(size: max(5.5, percentFontSize - 4.0), weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .foregroundStyle(isLow ? badgeTint : Color.secondary)
                         }
+                        .fixedSize(horizontal: true, vertical: false)
                         .padding(.horizontal, 2.5)
                         .padding(.vertical, 0.8)
                         .background(
@@ -187,13 +221,14 @@ struct MultiProviderWidgetView: View {
 
                         // 周额度百分比
                         Text(compactPercent(splitWindows.weekly))
-                            .font(.system(size: percentFontSize, weight: .heavy, design: .rounded))
+                            .font(.system(size: percentFontSize, weight: .bold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(Color.primary.opacity(0.9))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: true, vertical: false)
                     }
-                    .layoutPriority(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(2)
                 } else {
                     Text("\(Int(percent.rounded()))%")
                         .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
@@ -243,6 +278,7 @@ struct MultiProviderWidgetView: View {
                     }
 
                     Spacer(minLength: 0)
+
 
                     if showRightReset {
                         HStack(spacing: 2) {
@@ -399,15 +435,22 @@ struct TripleProviderWidget: Widget {
     init() {}
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(
+        AppIntentConfiguration(
             kind: Self.kind,
+            intent: MultiProviderIntent.self,
             provider: MultiProviderTimelineProvider()
         ) { entry in
-            MultiProviderWidgetView(entry: entry, maxCount: 3)
-                .containerBackground(Color(uiColor: .systemBackground), for: .widget)
+            Group {
+                if entry.style == .continuous {
+                    MultiProviderWidgetView(entry: entry, maxCount: 3)
+                } else {
+                    SegmentedMultiProviderWidgetView(entry: entry, maxCount: 3)
+                }
+            }
+            .containerBackground(Color(uiColor: .systemBackground), for: .widget)
         }
-        .configurationDisplayName("三渠道概览")
-        .description("展示主力 3 个 AI 渠道的额度与健康状态。")
+        .configurationDisplayName("多渠道概览")
+        .description("展示主力 AI 渠道的额度与健康状态，支持在设置中切换分段或连续进度条。")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

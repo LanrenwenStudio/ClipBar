@@ -21,6 +21,13 @@ struct AccountCard: View {
                     }
                 }
             }
+
+            if row.account.provider == .codex {
+                Text(row.snapshot.resetCreditCount.map { L10n.t("重置卡：\($0) 张", "Reset credits: \($0)") }
+                     ?? L10n.t("重置卡：暂不可用", "Reset credits: unavailable"))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(10)
         .background(

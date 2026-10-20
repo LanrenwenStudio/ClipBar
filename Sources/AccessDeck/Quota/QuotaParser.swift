@@ -28,7 +28,19 @@ enum QuotaParser {
             windows.append(classifyCodexWindow(secondary))
         }
 
-        return QuotaSnapshot(planType: plan, windows: windows, error: windows.isEmpty ? "empty quota payload" : nil)
+        let resetCreditCount = codexResetCreditCount(object)
+        return QuotaSnapshot(
+            planType: plan,
+            windows: windows,
+            error: windows.isEmpty ? "empty quota payload" : nil,
+            resetCreditCount: resetCreditCount
+        )
+    }
+
+    static func codexResetCreditCount(_ object: [String: Any]) -> Int? {
+        guard let count = JSONValue.firstDouble(object, paths: ["rate_limit_reset_credits.available_count", "available_count"]),
+              count >= 0, count < Double(Int.max), count.rounded(.towardZero) == count else { return nil }
+        return Int(count)
     }
 
     static func parseClaude(_ object: [String: Any]) -> QuotaSnapshot {
@@ -159,26 +171,36 @@ enum QuotaParser {
         label: String,
         matches: (String?) -> Bool
     ) -> QuotaWindow? {
-        var remainings: [Double] = []
-        var reset: String?
+        struct MatchedBucket {
+            let remaining: Double
+            let reset: String?
+        }
+        var bucketsMatched: [MatchedBucket] = []
         for group in groups {
             let buckets = (group["buckets"] as? [[String: Any]]) ?? []
             for bucket in buckets {
                 guard matches(JSONValue.firstString(bucket, paths: ["window"])) else { continue }
                 if let remaining = remainingPercent(from: bucket) {
-                    remainings.append(remaining)
-                }
-                if reset == nil {
-                    reset = formatReset(JSONValue.firstString(bucket, paths: ["resetTime", "reset_time"]))
+                    let reset = formatReset(JSONValue.firstString(bucket, paths: ["resetTime", "reset_time"]))
+                    bucketsMatched.append(MatchedBucket(remaining: remaining, reset: reset))
                 }
             }
         }
-        guard !remainings.isEmpty else { return nil }
+        guard !bucketsMatched.isEmpty else { return nil }
+        let selected = bucketsMatched.min { a, b in
+            if a.remaining != b.remaining {
+                return a.remaining < b.remaining
+            }
+            if a.reset != nil && b.reset == nil {
+                return true
+            }
+            return false
+        } ?? bucketsMatched[0]
         return QuotaWindow(
             id: id,
             label: label,
-            remainingPercent: remainings.reduce(0, +) / Double(remainings.count),
-            resetText: reset
+            remainingPercent: selected.remaining,
+            resetText: selected.reset
         )
     }
 

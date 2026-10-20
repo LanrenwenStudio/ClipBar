@@ -22,6 +22,7 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
     let healthyCount: Int
     let statusText: String
     let windows: [QuotaWindowSummary]
+    let resetCreditCount: Int?
 
     init(
         providerRawValue: String,
@@ -30,7 +31,8 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
         accountCount: Int,
         healthyCount: Int,
         statusText: String,
-        windows: [QuotaWindowSummary]
+        windows: [QuotaWindowSummary],
+        resetCreditCount: Int? = nil
     ) {
         self.providerRawValue = providerRawValue
         self.displayName = displayName
@@ -39,9 +41,33 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
         self.healthyCount = healthyCount
         self.statusText = statusText
         self.windows = windows
+        self.resetCreditCount = resetCreditCount
     }
     var provider: QuotaProvider {
         QuotaProvider(rawValue: providerRawValue) ?? .unknown
+    }
+
+    var resetCreditText: String? {
+        guard provider == .codex else { return nil }
+        let count = resetCreditCount.map(String.init) ?? "--"
+        return WidgetFormatter.isChinese ? "重置卡 \(count)" : "Resets \(count)"
+    }
+
+    var widgetTitle: String {
+        provider == .antigravity ? "Agy" : displayName
+    }
+
+    static func pooledResetCreditCount(in accounts: [AccountQuota], settings: AppSettings) -> Int? {
+        let enabled = StatusBarSummary.enabledAccounts(in: accounts.filter { $0.account.provider == .codex }, settings: settings)
+        guard !enabled.isEmpty else { return nil }
+        var total = 0
+        for row in enabled {
+            guard let count = row.snapshot.resetCreditCount, count >= 0 else { return nil }
+            let sum = total.addingReportingOverflow(count)
+            guard !sum.overflow else { return nil }
+            total = sum.partialValue
+        }
+        return total
     }
 
     var nearestResetText: String? {

@@ -13,6 +13,10 @@ final class AppModel {
     var launchAtLoginError: String?
     var isSettingsPresented = false
     var popoverDismissalRequest = 0
+    var codexSchedulerStatus: CodexSchedulerStatus?
+    var isSchedulerLoading = false
+    var schedulerError: String?
+
 
     private func applyCloudSettings(_ cloudSettings: AppSettings) {
         var mergedSettings = cloudSettings
@@ -66,6 +70,9 @@ final class AppModel {
         self.launchAtLoginError = nil
         if startPolling {
             start()
+        }
+        Task { [weak self] in
+            await self?.refreshCodexScheduler()
         }
     }
 
@@ -392,6 +399,20 @@ final class AppModel {
             }
         }
         await refreshTask?.value
+        Task { [weak self] in
+            await self?.refreshCodexScheduler()
+        }
+    }
+
+    func refreshCodexScheduler() async {
+        guard settings.isConfigured else { return }
+        isSchedulerLoading = true
+        let engine = CodexSchedulerEngine.shared
+        let client = ManagementClient(settings: settings)
+        let status = await engine.processPollCycle(accounts: accounts, settings: settings, client: client)
+        codexSchedulerStatus = status
+        schedulerError = nil
+        isSchedulerLoading = false
     }
 
     private func persistPreferences() {

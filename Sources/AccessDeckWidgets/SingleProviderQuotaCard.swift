@@ -3,9 +3,11 @@ import SwiftUI
 import UIKit
 #endif
 
+
 struct SingleProviderQuotaCard: View {
     let entry: SingleProviderEntry
     let provider: ProviderWidgetData
+    var showResetCredits: Bool = true
 
     private var splitWindows: (fiveHour: QuotaWindowSummary, weekly: QuotaWindowSummary)? {
         guard let fiveHour = provider.windows.first(where: isFiveHourWindow),
@@ -63,11 +65,15 @@ struct SingleProviderQuotaCard: View {
                 ProviderGlyph(provider: provider.provider, size: 16, tint: .primary)
                     .frame(width: 16, height: 16)
 
-                Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                if showResetCredits, provider.provider == .codex, let count = provider.resetCreditCount, count > 0 {
+                    ResetCreditPill(count: count, isAccent: true, fontSize: 9.5, iconSize: 8.0)
+                } else {
+                    Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
 
                 Spacer(minLength: 4)
 
@@ -142,6 +148,7 @@ struct SingleProviderQuotaCard: View {
                     .foregroundStyle(Color.primary)
                     .padding(.top, -2)
             }
+
 
             Spacer(minLength: 2)
 

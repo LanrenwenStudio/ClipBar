@@ -31,6 +31,22 @@ struct QuotaParserTests {
         #expect(snapshot.windows[1].remainingPercent == 90)
     }
 
+    @Test("Codex reset credits distinguish available, zero, and unknown counts")
+    func parseCodexResetCredits() throws {
+        #expect(QuotaParser.parseCodex(["rate_limit_reset_credits": ["available_count": 3]]).resetCreditCount == 3)
+        #expect(QuotaParser.parseCodex(["rate_limit_reset_credits": ["available_count": 0]]).resetCreditCount == 0)
+        #expect(QuotaParser.parseCodex([:]).resetCreditCount == nil)
+        #expect(QuotaParser.parseCodex(["rate_limit_reset_credits": ["available_count": NSNull()]]).resetCreditCount == nil)
+        #expect(QuotaParser.parseCodex(["rate_limit_reset_credits": ["available_count": -1]]).resetCreditCount == nil)
+        #expect(QuotaParser.codexResetCreditCount(["available_count": 2, "credits": []]) == 2)
+        #expect(QuotaParser.codexResetCreditCount(["available_count": 0]) == 0)
+        #expect(QuotaParser.codexResetCreditCount(["available_count": 1.5]) == nil)
+        #expect(QuotaParser.codexResetCreditCount(["credits": []]) == nil)
+
+        let oldSnapshot = Data(#"{"windows":[]}"#.utf8)
+        #expect(try JSONDecoder().decode(QuotaSnapshot.self, from: oldSnapshot).resetCreditCount == nil)
+    }
+
     @Test("Claude OAuth usage maps utilization to remaining percent")
     func parseClaudeWindows() {
         let snapshot = QuotaParser.parseClaude([
@@ -93,6 +109,52 @@ struct QuotaParserTests {
         #expect(snapshot.windows[0].label == "5h")
         #expect(snapshot.windows[0].remainingPercent == 40)
         #expect(snapshot.windows[1].label == "周额度" || snapshot.windows[1].label == "Week")
+        #expect(snapshot.windows[1].remainingPercent == 90)
+    }
+
+    @Test("Antigravity selects the most constrained quota group rather than diluting with unused 100% groups")
+    func parseAntigravityMultipleGroupsSelectsConstrained() {
+        let snapshot = QuotaParser.parseAntigravity([
+            "groups": [
+                [
+                    "displayName": "Gemini Models",
+                    "buckets": [
+                        [
+                            "bucketId": "gemini-5h",
+                            "window": "5h",
+                            "remainingFraction": 0.85,
+                            "resetTime": "2026-10-19T14:00:00Z"
+                        ],
+                        [
+                            "bucketId": "gemini-weekly",
+                            "window": "weekly",
+                            "remainingFraction": 0.90,
+                            "resetTime": "2026-10-24T18:00:00Z"
+                        ]
+                    ]
+                ],
+                [
+                    "displayName": "Claude and GPT models",
+                    "buckets": [
+                        [
+                            "bucketId": "3p-5h",
+                            "window": "5h",
+                            "remainingFraction": 1.0,
+                            "resetTime": "2026-10-19T18:00:00Z"
+                        ],
+                        [
+                            "bucketId": "3p-weekly",
+                            "window": "weekly",
+                            "remainingFraction": 1.0,
+                            "resetTime": "2026-10-26T00:00:00Z"
+                        ]
+                    ]
+                ]
+            ]
+        ])
+
+        #expect(snapshot.windows.map(\.id) == ["5h", "7d"])
+        #expect(snapshot.windows[0].remainingPercent == 85)
         #expect(snapshot.windows[1].remainingPercent == 90)
     }
 

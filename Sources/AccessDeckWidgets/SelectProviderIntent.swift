@@ -25,18 +25,62 @@ enum WidgetProviderChoice: String, AppEnum, Sendable {
 }
 
 @available(iOS 17.0, macOS 14.0, *)
+enum WidgetProgressBarStyle: String, AppEnum, Sendable {
+    case segmented = "segmented"
+    case continuous = "continuous"
+
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "进度条样式"
+
+    static let caseDisplayRepresentations: [WidgetProgressBarStyle: DisplayRepresentation] = [
+        .segmented: DisplayRepresentation(title: "分段微胶囊", subtitle: "高密度竖条阵列风格"),
+        .continuous: DisplayRepresentation(title: "连续平滑", subtitle: "微圆角实心长条风格")
+    ]
+}
+
+@available(iOS 17.0, macOS 14.0, *)
 struct SelectProviderIntent: WidgetConfigurationIntent {
-    static let title: LocalizedStringResource = "选择监控渠道"
-    static let description = IntentDescription("选择要展示的 AI 渠道。")
+    static let title: LocalizedStringResource = "单渠道小组件配置"
+    static let description = IntentDescription("选择要展示的 AI 渠道及展示选项。")
 
     @Parameter(title: "渠道", default: .auto)
     var provider: WidgetProviderChoice
 
+    @Parameter(title: "进度条样式", default: .segmented)
+    var style: WidgetProgressBarStyle
+
+    @Parameter(title: "显示重置卡数量", default: true)
+    var showResetCredits: Bool
+
     init() {
         self.provider = .auto
+        self.style = .segmented
+        self.showResetCredits = true
     }
 
-    init(provider: WidgetProviderChoice) {
+    init(provider: WidgetProviderChoice, style: WidgetProgressBarStyle = .segmented, showResetCredits: Bool = true) {
         self.provider = provider
+        self.style = style
+        self.showResetCredits = showResetCredits
+    }
+}
+
+@available(iOS 17.0, macOS 14.0, *)
+struct MultiProviderIntent: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "多渠道小组件配置"
+    static let description = IntentDescription("设置多渠道监控的显示选项。")
+    @Parameter(title: "进度条样式", default: .segmented)
+    var style: WidgetProgressBarStyle
+
+    @Parameter(title: "显示重置卡数量", default: true)
+    var showResetCredits: Bool
+
+    init() {
+        self.style = .segmented
+        self.showResetCredits = true
+    }
+
+    init(style: WidgetProgressBarStyle = .segmented, showResetCredits: Bool = true) {
+        self.style = style
+        self.showResetCredits = showResetCredits
     }
 }

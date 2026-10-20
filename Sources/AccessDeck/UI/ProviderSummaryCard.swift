@@ -6,7 +6,9 @@ struct ProviderSummaryCard: View {
     let remaining: Double?
     let weeklyRemaining: Double?
     var customHex: String? = nil
-
+    var isHiddenFromMenuBar: Bool = false
+    var onToggleVisibility: (() -> Void)? = nil
+    @State private var showingSchedulerSheet = false
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 6) {
@@ -18,6 +20,22 @@ struct ProviderSummaryCard: View {
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                if isHiddenFromMenuBar {
+                    Button(action: { onToggleVisibility?() }) {
+                        HStack(spacing: 2.5) {
+                            Image(systemName: "eye.slash")
+                                .font(.system(size: 8.5))
+                            Text(L10n.t("已在状态栏隐藏", "Hidden in menu bar"))
+                                .font(.system(size: 9, weight: .medium))
+                        }
+                        .foregroundStyle(AccessDeckTheme.warning)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .help(L10n.t("点击重新在状态栏显示此渠道", "Click to show this channel in menu bar"))
+                }
                 Spacer(minLength: 4)
                 Text(AccessDeckTheme.percentText(remaining))
                     .font(.system(size: 12.5, weight: .bold, design: .monospaced))
@@ -37,6 +55,31 @@ struct ProviderSummaryCard: View {
                         .foregroundStyle(weeklyColor)
                 }
                 quotaBar(for: weeklyRemaining, color: weeklyColor)
+            }
+
+            if provider == .codex {
+                Divider().opacity(0.3)
+                HStack(spacing: 5) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9))
+                        .foregroundStyle(AccessDeckTheme.brandColor(for: .codex))
+                    Text(L10n.t("Plus 额度智能调度", "Plus Quota Scheduler"))
+                        .font(.system(size: 9.5, weight: .medium))
+                    Spacer()
+                    Button(action: { showingSchedulerSheet = true }) {
+                        HStack(spacing: 2) {
+                            Text(L10n.t("查看计划与记录", "View Plan & Logs"))
+                                .font(.system(size: 9.5, weight: .medium))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 8))
+                        }
+                        .foregroundStyle(AccessDeckTheme.accent)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .sheet(isPresented: $showingSchedulerSheet) {
+                    CodexSchedulerDetailView()
+                }
             }
         }
         .padding(10)

@@ -50,7 +50,12 @@ struct QuotaPopoverView: View {
                         provider: group.provider,
                         accountCount: group.rows.count,
                         isSelected: model.visibleProvider == group.provider,
-                        action: { model.selectProvider(group.provider) }
+                        isHiddenFromMenuBar: !model.isStatusItemVisible(group.provider),
+                        action: { model.selectProvider(group.provider) },
+                        onToggleVisibility: {
+                            model.setStatusItemVisible(group.provider, visible: !model.isStatusItemVisible(group.provider))
+                        },
+                        openSettings: model.openSettings
                     )
                 }
             }
@@ -96,7 +101,11 @@ struct QuotaPopoverView: View {
                     accountCount: model.visibleTabAccounts.count,
                     remaining: pooledRemaining,
                     weeklyRemaining: weeklyPooledRemaining,
-                    customHex: model.settings.customColorHex(for: model.visibleProvider)
+                    customHex: model.settings.customColorHex(for: model.visibleProvider),
+                    isHiddenFromMenuBar: !model.isStatusItemVisible(model.visibleProvider),
+                    onToggleVisibility: {
+                        model.setStatusItemVisible(model.visibleProvider, visible: !model.isStatusItemVisible(model.visibleProvider))
+                    }
                 )
 
                 ViewThatFits(in: .vertical) {

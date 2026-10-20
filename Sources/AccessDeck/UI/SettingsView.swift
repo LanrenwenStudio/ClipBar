@@ -19,7 +19,7 @@ struct SettingsView: View {
             switch self {
             case .connection: L10n.t("服务连接", "Service")
             case .display: L10n.t("菜单栏", "Menu Bar")
-            case .providers: L10n.t("渠道外观", "Providers")
+            case .providers: L10n.t("渠道管理", "Channels")
             }
         }
 
@@ -27,7 +27,7 @@ struct SettingsView: View {
             switch self {
             case .connection: "network"
             case .display: "menubar.rectangle"
-            case .providers: "slider.horizontal.3"
+            case .providers: "server.rack"
             }
         }
     }
@@ -204,6 +204,18 @@ struct SettingsView: View {
 
     // MARK: - Tab 2: Display & Menu Bar
     private var displayContent: some View {
+        ViewThatFits(in: .vertical) {
+            displaySections
+            ScrollView {
+                displaySections
+                    .padding(.vertical, 1)
+            }
+            .scrollIndicators(.hidden)
+            .frame(maxHeight: AccessDeckTheme.popoverMaxListHeight)
+        }
+    }
+
+    private var displaySections: some View {
         VStack(spacing: 8) {
             SettingsSection(title: L10n.t("系统集成", "System Integration"), icon: "macwindow.badge.plus") {
                 HStack(spacing: 8) {
@@ -272,6 +284,43 @@ struct SettingsView: View {
                 }
             }
 
+            SettingsSection(title: L10n.t("状态栏显示渠道", "Menu Bar Channels"), icon: "checklist") {
+                VStack(spacing: 7) {
+                    if model.orderedPreferenceProviders.isEmpty {
+                        Text(L10n.t("暂无已配置渠道", "No configured channels"))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(model.orderedPreferenceProviders, id: \.self) { provider in
+                            let isVisible = model.isStatusItemVisible(provider)
+                            HStack(spacing: 8) {
+                                ProviderGlyph(provider: provider, size: 13)
+                                Text(provider.displayName)
+                                    .font(.system(size: 11.5, weight: .medium))
+                                if !isVisible {
+                                    Text(L10n.t("已在状态栏隐藏", "Hidden in menu bar"))
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundStyle(AccessDeckTheme.warning)
+                                        .padding(.horizontal, 4.5)
+                                        .padding(.vertical, 1)
+                                        .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
+                                }
+                                Spacer()
+                                Toggle(
+                                    "",
+                                    isOn: Binding(
+                                        get: { model.isStatusItemVisible(provider) },
+                                        set: { model.setStatusItemVisible(provider, visible: $0) }
+                                    )
+                                )
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                            }
+                        }
+                    }
+                }
+            }
             SettingsSection(title: L10n.t("行为与外观", "Preferences & Theme"), icon: "slider.horizontal.3") {
                 VStack(spacing: 8) {
                     HStack {
@@ -326,9 +375,14 @@ struct SettingsView: View {
                 )
             } else {
                 HStack {
-                    Text(L10n.t("渠道排序与个性化", "Providers & Order"))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.t("渠道排序与显示", "Channels & Visibility"))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary)
+                        Text(L10n.t("点击眼睛切换状态栏显隐，上下移动调整顺序", "Click eye to show/hide in menu bar; arrows to reorder."))
+                            .font(.system(size: 9))
+                            .foregroundStyle(.tertiary)
+                    }
                     Spacer()
                     Text(L10n.t("共 \(model.orderedPreferenceProviders.count) 个渠道", "\(model.orderedPreferenceProviders.count) providers"))
                         .font(.system(size: 9.5))

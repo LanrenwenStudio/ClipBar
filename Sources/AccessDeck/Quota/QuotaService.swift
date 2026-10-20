@@ -77,7 +77,18 @@ struct QuotaService: Sendable {
             url: "https://chatgpt.com/backend-api/wham/usage",
             headers: headers
         )
-        return try decode(response, using: QuotaParser.parseCodex)
+        var snapshot = try decode(response, using: QuotaParser.parseCodex)
+        if snapshot.resetCreditCount == nil {
+            if let credits = try? await client.apiCall(
+                authIndex: account.authIndex,
+                method: "GET",
+                url: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits",
+                headers: headers
+            ), (200..<300).contains(credits.statusCode), let object = JSONValue.object(from: credits.body) {
+                snapshot.resetCreditCount = QuotaParser.codexResetCreditCount(object)
+            }
+        }
+        return snapshot
     }
 
     private func fetchClaude(_ account: AuthAccount) async throws -> QuotaSnapshot {
@@ -128,11 +139,12 @@ struct QuotaService: Sendable {
         let headers = [
             "Authorization": "Bearer $TOKEN$",
             "Content-Type": "application/json",
-            "User-Agent": "antigravity/cli/1.0.13 (aidev_client; os_type=darwin; arch=arm64)"
+            "User-Agent": "antigravity/hub/2.23.0 darwin/arm64"
         ]
         let endpoints = [
-            "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
             "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+            "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary",
+            "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary",
             "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
             "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
         ]
@@ -280,7 +292,7 @@ struct QuotaService: Sendable {
                                 : Self.codexAccountID(from: downloaded)
                         }
                         if needsProjectID {
-                            next.projectID = JSONValue.firstString(downloaded, paths: ["project_id", "metadata.project_id"])
+                            next.projectID = JSONValue.firstString(downloaded, paths: ["project_id", "projectId", "installed.project_id", "web.project_id", "metadata.project_id"])
                         }
                     }
                     return next

@@ -52,6 +52,20 @@ struct AppSettingsTests {
         #expect(loaded.statusQuotaDisplay(for: .claude) == .weekly)
     }
 
+    @Test("Provider visibility toggle persists and reflects in hidden status items")
+    func providerVisibilityToggle() {
+        var settings = AppSettings.default
+        #expect(!settings.isProviderHidden(.antigravity))
+
+        settings.toggleProviderHidden(.antigravity)
+        #expect(settings.isProviderHidden(.antigravity))
+        #expect(settings.hiddenStatusItemIDs.contains(QuotaProvider.antigravity.rawValue))
+
+        settings.toggleProviderHidden(.antigravity)
+        #expect(!settings.isProviderHidden(.antigravity))
+        #expect(!settings.hiddenStatusItemIDs.contains(QuotaProvider.antigravity.rawValue))
+    }
+
     @Test("Menu bar quota display persists in UserDefaults")
     func persistsStatusQuotaDisplay() {
         let suiteName = "AccessDeckTests.SettingsStore.\(UUID().uuidString)"

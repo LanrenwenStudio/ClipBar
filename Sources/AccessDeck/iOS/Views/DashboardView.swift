@@ -139,17 +139,27 @@ struct DashboardView: View {
     private var providersSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(L10n.t("多渠道", "Multi-Provider"))
-                    .font(.headline)
+                HStack(spacing: 6) {
+                    Text(L10n.t("多渠道", "Multi-Provider"))
+                        .font(.headline)
+                    if hiddenProvidersCount > 0 {
+                        Text(L10n.t("\(hiddenProvidersCount) 个已隐藏", "\(hiddenProvidersCount) hidden"))
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(AccessDeckTheme.warning)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
+                    }
+                }
                 Spacer()
-                if dashboardProviderGroups.count > 1 {
+                if !model.groupedAccounts.isEmpty {
                     Button {
                         triggerHaptic(.light)
                         showingReorderSheet = true
                     } label: {
                         HStack(spacing: 4) {
-                            Image(systemName: "arrow.up.arrow.down")
-                            Text(L10n.t("调整排序", "Reorder"))
+                            Image(systemName: "slider.horizontal.2")
+                            Text(L10n.t("渠道管理", "Manage"))
                         }
                         .font(.caption.weight(.medium))
                         .foregroundStyle(AccessDeckTheme.accent)
@@ -157,10 +167,6 @@ struct DashboardView: View {
                         .padding(.vertical, 4)
                         .background(AccessDeckTheme.accent.opacity(0.12), in: Capsule())
                     }
-                } else {
-                    Text("\(dashboardProviderGroups.count) " + L10n.t("个渠道", "Providers"))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -183,9 +189,9 @@ struct DashboardView: View {
                     )
                 } else {
                     UnavailableStateView(
-                        title: L10n.t("暂无可用渠道", "No Available Providers"),
-                        detail: L10n.t("已配置的渠道暂时没有可用额度数据，请检查 Token 后重试。", "Configured providers have no available quota data. Check the tokens and try again."),
-                        systemImage: "chart.bar.xaxis"
+                        title: L10n.t("暂无可见渠道", "No Visible Channels"),
+                        detail: L10n.t("所有渠道均已设为隐藏。点击右上角“渠道管理”可重新开启展示。", "All channels are hidden. Tap Manage above to show them again."),
+                        systemImage: "eye.slash"
                     )
                 }
             } else {
@@ -201,6 +207,14 @@ struct DashboardView: View {
                             )
                         }
                         .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                triggerHaptic(.medium)
+                                model.toggleProviderHidden(group.provider)
+                            } label: {
+                                Label(L10n.t("在看板中隐藏此渠道", "Hide Channel"), systemImage: "eye.slash")
+                            }
+                        }
                         .draggable(group.provider.rawValue)
                         .dropDestination(for: String.self) { items, location in
                             guard let droppedID = items.first else { return false }
@@ -263,10 +277,15 @@ struct DashboardView: View {
     }
 
     private var dashboardProviderGroups: [(provider: QuotaProvider, rows: [AccountQuota])] {
-        Array(model.groupedAccounts.compactMap { group in
+        model.groupedAccounts.compactMap { group in
+            guard !model.isProviderHidden(group.provider) else { return nil }
             let rows = StatusBarSummary.enabledAccounts(in: group.rows, settings: model.settings)
             return rows.isEmpty ? nil : (group.provider, rows)
-        }.prefix(3))
+        }
+    }
+
+    private var hiddenProvidersCount: Int {
+        model.groupedAccounts.filter { model.isProviderHidden($0.provider) }.count
     }
 
     private var lowOrExhaustedCount: Int {
@@ -411,11 +430,15 @@ private struct ProviderGridCard: View {
     var body: some View {
         let isHidden = model.isProviderHidden(provider)
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
+            HStack(alignment: .center, spacing: 6) {
                 ProviderGlyph(provider: provider, size: 16)
-                Text(provider.displayName)
-                    .font(.headline)
-                    .lineLimit(1)
+                if let credits = resetCreditCount, credits > 0 {
+                    ResetCreditPill(count: credits, isAccent: true, fontSize: 11, iconSize: 9.5)
+                } else {
+                    Text(provider.displayName)
+                        .font(.headline)
+                        .lineLimit(1)
+                }
                 if isHidden {
                     Image(systemName: "eye.slash")
                         .font(.caption2)
@@ -443,6 +466,11 @@ private struct ProviderGridCard: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.8)
         }
+    }
+
+    private var resetCreditCount: Int? {
+        guard provider == .codex else { return nil }
+        return ProviderWidgetData.pooledResetCreditCount(in: accounts, settings: model.settings)
     }
 
     private var fiveHourRemaining: Double? {

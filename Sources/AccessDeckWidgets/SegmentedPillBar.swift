@@ -54,3 +54,82 @@ struct SegmentedPillBar: View {
         .frame(height: barHeight)
     }
 }
+
+/// 重置卡精致胶囊徽标（Reset Credit Badge Pill）
+/// 专为移动端（App 卡片、桌面 Widget、锁屏 Widget）设计：
+/// - 采用 SF Symbol creditcard.fill 图标 + 等宽粗体数字；
+/// - 半透明背景 + 细描边胶囊，与 iOS 原生设计规范及 AccessDeck 主题深度融合；
+/// - 支持主题色（桌面/App）与自适应灰度（锁屏 Widget）。
+struct ResetCreditPill: View {
+    let count: Int
+    var isAccent: Bool = true
+    var fontSize: CGFloat = 8.5
+    var iconSize: CGFloat = 7.5
+
+    private var tintColor: Color {
+        isAccent ? Color(red: 0.0, green: 0.52, blue: 1.0) : Color.primary
+    }
+
+    var body: some View {
+        HStack(spacing: 2.5) {
+            Image(systemName: "creditcard.fill")
+                .font(.system(size: iconSize, weight: .semibold))
+            Text("\(count)")
+                .font(.system(size: fontSize, weight: .bold, design: .rounded))
+                .monospacedDigit()
+        }
+        .foregroundStyle(tintColor)
+        .padding(.horizontal, max(3.5, fontSize * 0.48))
+        .padding(.vertical, max(1.2, fontSize * 0.18))
+        .background(
+            Capsule()
+                .fill(isAccent ? tintColor.opacity(0.12) : Color.primary.opacity(0.12))
+        )
+        .overlay(
+            Capsule()
+                .strokeBorder(isAccent ? tintColor.opacity(0.24) : Color.primary.opacity(0.14), lineWidth: 0.5)
+        )
+        .fixedSize()
+    }
+}
+
+/// 连续平滑细长条进度条（Continuous Bar）
+struct ContinuousPillBar: View {
+    let percent: Double
+    let barHeight: CGFloat
+    let cornerRadius: CGFloat
+    let activeColor: Color
+    let inactiveColor: Color
+
+    init(
+        percent: Double,
+        barHeight: CGFloat = 5.5,
+        cornerRadius: CGFloat = 2.5,
+        activeColor: Color,
+        inactiveColor: Color? = nil
+    ) {
+        self.percent = min(100, max(0, percent))
+        self.barHeight = barHeight
+        self.cornerRadius = cornerRadius
+        self.activeColor = activeColor
+        self.inactiveColor = inactiveColor ?? activeColor.opacity(0.18)
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(inactiveColor)
+                    .frame(height: barHeight)
+
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(activeColor)
+                    .frame(
+                        width: max(0, min(geo.size.width, geo.size.width * (percent / 100.0))),
+                        height: barHeight
+                    )
+            }
+        }
+        .frame(height: barHeight)
+    }
+}

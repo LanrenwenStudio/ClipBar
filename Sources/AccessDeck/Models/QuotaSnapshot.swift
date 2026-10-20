@@ -100,6 +100,7 @@ struct QuotaSnapshot: Hashable, Sendable, Codable {
     var planType: String?
     var windows: [QuotaWindow]
     var error: String?
+    var resetCreditCount: Int? = nil
 
     var primaryRemaining: Double? {
         windows.first?.remainingPercent

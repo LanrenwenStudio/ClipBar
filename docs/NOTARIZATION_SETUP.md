@@ -1,27 +1,20 @@
 # AccessDeck Apple 官方公证与分发配置手册
 
-本文档记录 AccessDeck 接入 **Apple Developer ID 签名与苹果官方公证（Notarization）** 所需的 GitHub Secrets 配置说明。后续当你准备为 AccessDeck 开启全自动公证时，按此配置即可。
+本文档记录 AccessDeck 在本机执行 Apple Developer ID 签名与苹果官方公证所需的配置。禁止使用 GitHub Actions；构建、公证、上传及发布均需用户明确授权。
 
----
+## 本机凭据
 
-## 🔑 GitHub Secrets 完整清单
-
-在 GitHub 仓库 `LanrenwenStudio/AccessDeck` -> **Settings** -> **Secrets and variables** -> **Actions** 中添加以下 Repository Secrets：
-
-| Secret 名称 | 说明 | 生成 / 导出方式 |
-| :--- | :--- | :--- |
-| `DEVELOPER_ID_P12_BASE64` | Apple Developer ID Application 证书与私钥导出的 `.p12` 文件的 Base64 编码文本 | `base64 -i developer-id.p12 \| pbcopy` |
-| `DEVELOPER_ID_P12_PASSWORD` | 导出 `.p12` 时设置的保护密码 | 字符串明文 |
-| `ASC_API_KEY_BASE64` | App Store Connect API Key (`AuthKey_XXXXXX.p8`) 文件的 Base64 编码文本 | `base64 -i AuthKey_XXXXXX.p8 \| pbcopy` |
-| `ASC_KEY_ID` | App Store Connect API Key ID（10 位字符） | 例如：`2X9R4HXF34` |
-| `ASC_ISSUER_ID` | App Store Connect API Issuer ID（UUID 格式） | 例如：`57246542-96fe-1a63-e053-082e100a1409` |
-| `HOMEBREW_TAP_TOKEN` | 用于向 `LanrenwenStudio/homebrew-apps` 提交 Cask 更新的 GitHub Token (PAT) | 具备 `repo` 权限的 Personal Access Token |
+- Developer ID Application 证书及私钥安装在本机 Keychain 中，不需要向 GitHub 上传 `.p12` 或 Base64 证书。
+- 公证 API Key `.p8` 保存在仓库外，通过 `NOTARYTOOL_KEY_PATH` 指定。
+- 设置对应的 `NOTARYTOOL_KEY_ID`、`NOTARYTOOL_ISSUER_ID`；这些值必须与本机 API Key 一致。
+- 本机 GitHub CLI 鉴权用于获授权后的 Release 上传；不依赖 GitHub Actions Secrets。
+- 不把证书、私钥、API Token 或密码提交到 Git。
 
 ---
 
 ## 🛠️ 本地签名与公证验证命令
 
-如果需要在本地终端手动执行签名与公证，可以在 `AccessDeck` 根目录执行：
+用户明确授权发版后，在 `AccessDeck` 根目录使用现有本地打包脚本：
 
 ```bash
 DEVID_KEYCHAIN="$HOME/Library/Keychains/login.keychain-db" \
@@ -38,19 +31,12 @@ DISTRIBUTION_MODE=developer-id \
 
 ---
 
-## 🚀 自动发版流程
+## 本地发布流程
 
-配置好上述 Secrets 后，后续每次发布新版本只需在 `AccessDeck` 仓库执行：
+1. 确认版本、分发渠道及明确发布授权。
+2. 在本机运行上面的 `./scripts/package-app.sh`，完成 Developer ID 签名、公证与产物打包。
+3. 对最终产物核对签名、公证和 SHA-256；仅上传实际成功生成的产物。
+4. 获授权后使用本机 `gh release create` 或 `gh release upload` 上传 DMG/ZIP。
+5. 在本地更新 `LanrenwenStudio/homebrew-apps` 对应 Cask 的版本、SHA-256 和资产 URL。提交和推送另获授权。
 
-```bash
-git tag v0.1.1
-git push origin v0.1.1
-```
-
-GitHub Actions 将自动完成：
-1. 双架构 Universal 应用编译（Apple Silicon + Intel）
-2. Apple Developer ID 签名与 Hardened Runtime 加固
-3. 提交至苹果服务器公证（`xcrun notarytool submit`）
-4. 执行 `xcrun stapler staple` 盖章
-5. 生成 Release 发布 `DMG` 与 `ZIP`
-6. 自动同步更新 `LanrenwenStudio/homebrew-apps` 仓库的 AccessDeck Homebrew Cask
+GitHub 仅保存源码和 Release 资产；推送标签或分支不构成发版，不得触发、重跑或重新启用 Actions。

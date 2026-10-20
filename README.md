@@ -79,6 +79,8 @@ remote-management:
   - **渠道切换 Tab**：点击 Codex、Claude、Grok 等 Tab 切换查看对应平台的账号列表。
   - **渠道汇总卡片**：展示该平台下所有账号的池化剩余总额度与下一次刷新倒计时。
   - **账号列表卡片**：列出每个登录账号的邮箱、当前 5 小时突发窗口使用量（如 `41/50`）、周用量及重置倒计时。
+  - **Codex 重置卡数量**：macOS 账号卡片与 iOS 渠道详情账号列表显示接口返回的可用手动重置卡数量（含 0 张），随额度刷新更新；usage 未包含数量时通过 CPA Management API 只读查询 `/wham/rate-limit-reset-credits`，仍不可用时显示「重置卡：暂不可用」，不推算数量，也不提供兑换操作。
+  - **Widget 重置卡数量**：普通单渠道、多渠道及锁屏圆形、矩形、行内 Widget 的 Codex 展示未禁用账号的重置卡合计（含 0）；任一参与汇总的账号数量未知时显示 `--`，不把未知当成 0。随 App 刷新写入共享快照并请求 Widget 更新。
 
 ---
 
@@ -97,7 +99,7 @@ remote-management:
 
 ## 🔒 隐私与安全性
 
-- **100% 只读**：仅调用 CPA Management API 与插件查询接口，不启动、不托管、不修改 CLIProxyAPI 进程。
+- **100% 只读**：仅通过 CPA Management API 获取账号信息与查询上游额度，不启动、不托管、不修改 CLIProxyAPI 进程；两端仅使用 CPA 直连。
 - **完全本地运行**：CPA 地址与 Management Key 仅存储在本地设置与同步 Keychain 中，零独立 backend 依赖，绝不向任何外部服务器上传凭据。
 
 ---

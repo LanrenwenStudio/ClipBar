@@ -9,6 +9,22 @@ struct SingleProviderEntry: TimelineEntry {
     let date: Date
     let snapshot: AccessDeckWidgetSnapshot
     let selectedChoice: WidgetProviderChoice
+    let style: WidgetProgressBarStyle
+    let showResetCredits: Bool
+
+    init(
+        date: Date,
+        snapshot: AccessDeckWidgetSnapshot,
+        selectedChoice: WidgetProviderChoice,
+        style: WidgetProgressBarStyle = .segmented,
+        showResetCredits: Bool = true
+    ) {
+        self.date = date
+        self.snapshot = snapshot
+        self.selectedChoice = selectedChoice
+        self.style = style
+        self.showResetCredits = showResetCredits
+    }
 }
 
 struct SingleProviderTimelineProvider: AppIntentTimelineProvider {
@@ -16,7 +32,7 @@ struct SingleProviderTimelineProvider: AppIntentTimelineProvider {
     typealias Intent = SelectProviderIntent
 
     func placeholder(in context: Context) -> SingleProviderEntry {
-        SingleProviderEntry(date: Date(), snapshot: .preview, selectedChoice: .auto)
+        SingleProviderEntry(date: Date(), snapshot: .preview, selectedChoice: .auto, style: .segmented, showResetCredits: true)
     }
 
     func snapshot(for configuration: SelectProviderIntent, in context: Context) async -> SingleProviderEntry {
@@ -24,7 +40,9 @@ struct SingleProviderTimelineProvider: AppIntentTimelineProvider {
         return SingleProviderEntry(
             date: Date(),
             snapshot: snapshot.providers.isEmpty ? .preview : snapshot,
-            selectedChoice: configuration.provider
+            selectedChoice: configuration.provider,
+            style: configuration.style,
+            showResetCredits: configuration.showResetCredits
         )
     }
 
@@ -33,7 +51,9 @@ struct SingleProviderTimelineProvider: AppIntentTimelineProvider {
         let entry = SingleProviderEntry(
             date: Date(),
             snapshot: snapshot.providers.isEmpty ? .preview : snapshot,
-            selectedChoice: configuration.provider
+            selectedChoice: configuration.provider,
+            style: configuration.style,
+            showResetCredits: configuration.showResetCredits
         )
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
         return Timeline(entries: [entry], policy: .after(nextUpdate))
@@ -69,7 +89,11 @@ struct SingleProviderWidgetView: View {
         if !entry.snapshot.isConfigured || entry.snapshot.providers.isEmpty {
             unconfiguredView
         } else if let provider = targetProvider {
-            SingleProviderQuotaCard(entry: entry, provider: provider)
+            if entry.style == .continuous {
+                SingleProviderQuotaCard(entry: entry, provider: provider, showResetCredits: entry.showResetCredits)
+            } else {
+                SegmentedSingleProviderQuotaCard(entry: entry, provider: provider, showResetCredits: entry.showResetCredits)
+            }
         } else {
             noDataForSelectedProviderView
         }

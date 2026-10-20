@@ -59,13 +59,13 @@ struct LockScreenQuotaView: View {
         if let provider = targetProvider {
             switch family {
             case .accessoryCircular:
-                LockScreenCircularView(provider: provider)
+                LockScreenCircularView(provider: provider, showResetCredits: entry.showResetCredits)
             case .accessoryRectangular:
-                LockScreenRectangularView(provider: provider, snapshot: entry.snapshot, entryDate: entry.date)
+                LockScreenRectangularView(provider: provider, snapshot: entry.snapshot, entryDate: entry.date, showResetCredits: entry.showResetCredits, style: entry.style)
             case .accessoryInline:
-                LockScreenInlineView(provider: provider)
+                LockScreenInlineView(provider: provider, showResetCredits: entry.showResetCredits)
             default:
-                LockScreenCircularView(provider: provider)
+                LockScreenCircularView(provider: provider, showResetCredits: entry.showResetCredits)
             }
         } else {
             // 无数据时的紧凑占位
@@ -94,6 +94,7 @@ struct LockScreenQuotaView: View {
 
 private struct LockScreenCircularView: View {
     let provider: ProviderWidgetData
+    var showResetCredits: Bool = true
 
     private var percent: Double {
         min(100, max(0, provider.remainingPercent ?? 0))
@@ -110,17 +111,16 @@ private struct LockScreenCircularView: View {
         Gauge(value: percent, in: 0...100) {
             ProviderGlyph(provider: provider.provider, size: 10)
         } currentValueLabel: {
-            if hasFiveHour {
-                VStack(spacing: -1.5) {
-                    Text("\(Int(percent.rounded()))")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+            VStack(spacing: -1.5) {
+                Text("\(Int(percent.rounded()))")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                if showResetCredits, let credits = provider.resetCreditCount, credits > 0 {
+                    ResetCreditPill(count: credits, isAccent: false, fontSize: 6.0, iconSize: 5.0)
+                } else if hasFiveHour {
                     Text(provider.nearestFiveHourDisplayText ?? "5h")
                         .font(.system(size: 7, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
                 }
-            } else {
-                Text("\(Int(percent.rounded()))")
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
             }
         }
         .gaugeStyle(.accessoryCircular)
@@ -133,14 +133,13 @@ private struct LockScreenRectangularView: View {
     let provider: ProviderWidgetData
     let snapshot: AccessDeckWidgetSnapshot
     let entryDate: Date
+    var showResetCredits: Bool = true
+    var style: WidgetProgressBarStyle = .segmented
 
     private var percent: Double {
         min(100, max(0, provider.remainingPercent ?? 0))
     }
 
-    private var displayName: String {
-        provider.provider == .antigravity ? "Agy" : provider.displayName
-    }
 
     private var fiveHourWindow: QuotaWindowSummary? {
         provider.windows.first { w in
@@ -180,11 +179,17 @@ private struct LockScreenRectangularView: View {
             let weekly = split.weekly
             // 双窗口布局：5h 与周额度各有一条独立进度条
             VStack(alignment: .leading, spacing: 3) {
-                // 顶栏：左侧[图标 + 渠道名 + 账号数] ... 右侧[刷新时间]
+                // 顶栏：图标、账号数与刷新时间。
                 HStack(alignment: .center, spacing: 3) {
                     ProviderGlyph(provider: provider.provider, size: 10.5)
-                    Text(displayName)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                    if showResetCredits, provider.provider == .codex, let credits = provider.resetCreditCount, credits > 0 {
+                        ResetCreditPill(count: credits, isAccent: false, fontSize: 7.5, iconSize: 6.5)
+                    } else {
+                        Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
 
                     if provider.accountCount > 0 {
                         Text("\(provider.healthyCount)/\(provider.accountCount)")
@@ -210,15 +215,25 @@ private struct LockScreenRectangularView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 14, alignment: .leading)
 
-                    SegmentedPillBar(
-                        percent: min(100, max(0, fiveHour)),
-                        totalSegments: 24,
-                        barHeight: 5.5,
-                        segmentSpacing: 1.0,
-                        cornerRadius: 0.5,
-                        activeColor: .primary,
-                        inactiveColor: Color.primary.opacity(0.18)
-                    )
+                    if style == .continuous {
+                        ContinuousPillBar(
+                            percent: min(100, max(0, fiveHour)),
+                            barHeight: 5.5,
+                            cornerRadius: 2.0,
+                            activeColor: .primary,
+                            inactiveColor: Color.primary.opacity(0.18)
+                        )
+                    } else {
+                        SegmentedPillBar(
+                            percent: min(100, max(0, fiveHour)),
+                            totalSegments: 24,
+                            barHeight: 5.5,
+                            segmentSpacing: 1.0,
+                            cornerRadius: 0.5,
+                            activeColor: .primary,
+                            inactiveColor: Color.primary.opacity(0.18)
+                        )
+                    }
 
                     Spacer(minLength: 0)
 
@@ -234,15 +249,25 @@ private struct LockScreenRectangularView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 14, alignment: .leading)
 
-                    SegmentedPillBar(
-                        percent: min(100, max(0, weekly)),
-                        totalSegments: 24,
-                        barHeight: 5.5,
-                        segmentSpacing: 1.0,
-                        cornerRadius: 0.5,
-                        activeColor: .primary,
-                        inactiveColor: Color.primary.opacity(0.18)
-                    )
+                    if style == .continuous {
+                        ContinuousPillBar(
+                            percent: min(100, max(0, weekly)),
+                            barHeight: 5.5,
+                            cornerRadius: 2.0,
+                            activeColor: .primary,
+                            inactiveColor: Color.primary.opacity(0.18)
+                        )
+                    } else {
+                        SegmentedPillBar(
+                            percent: min(100, max(0, weekly)),
+                            totalSegments: 24,
+                            barHeight: 5.5,
+                            segmentSpacing: 1.0,
+                            cornerRadius: 0.5,
+                            activeColor: .primary,
+                            inactiveColor: Color.primary.opacity(0.18)
+                        )
+                    }
 
                     Spacer(minLength: 0)
 
@@ -250,15 +275,22 @@ private struct LockScreenRectangularView: View {
                         .font(.system(size: 9.0, weight: .bold, design: .rounded))
                         .monospacedDigit()
                 }
+
             }
         } else {
             // 单窗口布局：单一大进度条 + 重置倒计时
             VStack(alignment: .leading, spacing: 2) {
-                // 顶行：左侧[图标 + 渠道名 + 账号数] ... 右侧[刷新时间 + 主百分比]
+                // 顶行：图标、账号数、刷新时间与主百分比。
                 HStack(alignment: .center, spacing: 3) {
                     ProviderGlyph(provider: provider.provider, size: 11)
-                    Text(displayName)
-                        .font(.system(size: 11.5, weight: .bold, design: .rounded))
+                    if showResetCredits, provider.provider == .codex, let credits = provider.resetCreditCount, credits > 0 {
+                        ResetCreditPill(count: credits, isAccent: false, fontSize: 7.5, iconSize: 6.5)
+                    } else {
+                        Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
+                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                    }
 
                     if provider.accountCount > 0 {
                         Text("\(provider.healthyCount)/\(provider.accountCount)")
@@ -283,15 +315,25 @@ private struct LockScreenRectangularView: View {
                 }
 
                 // 中间行：分段胶囊进度条（细密条纹风格）
-                SegmentedPillBar(
-                    percent: percent,
-                    totalSegments: 28,
-                    barHeight: 5.5,
-                    segmentSpacing: 1.1,
-                    cornerRadius: 0.5,
-                    activeColor: .primary,
-                    inactiveColor: Color.primary.opacity(0.18)
-                )
+                if style == .continuous {
+                    ContinuousPillBar(
+                        percent: percent,
+                        barHeight: 5.5,
+                        cornerRadius: 2.0,
+                        activeColor: .primary,
+                        inactiveColor: Color.primary.opacity(0.18)
+                    )
+                } else {
+                    SegmentedPillBar(
+                        percent: percent,
+                        totalSegments: 28,
+                        barHeight: 5.5,
+                        segmentSpacing: 1.1,
+                        cornerRadius: 0.5,
+                        activeColor: .primary,
+                        inactiveColor: Color.primary.opacity(0.18)
+                    )
+                }
 
                 // 底行：重置时间
                 HStack(spacing: 4) {
@@ -316,14 +358,12 @@ private struct LockScreenRectangularView: View {
 
 private struct LockScreenInlineView: View {
     let provider: ProviderWidgetData
+    var showResetCredits: Bool = true
 
     private var percent: Double {
         min(100, max(0, provider.remainingPercent ?? 0))
     }
 
-    private var displayName: String {
-        provider.provider == .antigravity ? "Agy" : provider.displayName
-    }
 
     private var hasFiveHour: Bool {
         provider.windows.contains { w in
@@ -335,10 +375,16 @@ private struct LockScreenInlineView: View {
     var body: some View {
         HStack(spacing: 3) {
             Image(systemName: "gauge.with.needle")
-            if hasFiveHour {
-                Text("\(displayName) \(Int(percent.rounded()))% \(provider.nearestFiveHourDisplayText ?? "5h")")
+            let name = provider.provider == .antigravity ? "Agy" : provider.displayName
+            if showResetCredits, let credits = provider.resetCreditCount, credits > 0 {
+                Text("💳\(credits) \(Int(percent.rounded()))% \(provider.nearestFiveHourDisplayText ?? "5h")")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+            } else if hasFiveHour {
+                Text("\(name) \(Int(percent.rounded()))% \(provider.nearestFiveHourDisplayText ?? "5h")")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
             } else {
-                Text("\(displayName) \(Int(percent.rounded()))%")
+                Text("\(name) \(Int(percent.rounded()))%")
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
             }
         }
     }

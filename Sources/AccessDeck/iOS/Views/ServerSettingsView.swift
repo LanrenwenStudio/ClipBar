@@ -21,6 +21,7 @@ struct ServerSettingsView: View {
                 connectionSection
                 diagnosisSection
                 behaviorSection
+                channelsSection
                 providerColorsSection
                 aboutSection
             }
@@ -212,6 +213,59 @@ struct ServerSettingsView: View {
 
         } header: {
             Text(L10n.t("偏好", "Preferences"))
+        }
+    }
+
+    // MARK: - Channels Section
+
+    private var channelsSection: some View {
+        Section {
+            if model.orderedPreferenceProviders.isEmpty {
+                Text(L10n.t("暂无已配置渠道", "No configured channels"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(model.orderedPreferenceProviders, id: \.self) { provider in
+                    let isVisible = !draft.isProviderHidden(provider)
+                    HStack(spacing: 12) {
+                        ProviderGlyph(provider: provider, size: 18)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(provider.displayName)
+                                    .font(.body)
+                                if !isVisible {
+                                    Text(L10n.t("已隐藏", "Hidden"))
+                                        .font(.caption2.weight(.medium))
+                                        .foregroundStyle(AccessDeckTheme.warning)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 1)
+                                        .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
+                                }
+                            }
+                            let count = model.accounts.filter { $0.account.provider == provider }.count
+                            Text("\(count) " + L10n.t("个订阅账号", "accounts"))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Toggle(
+                            "",
+                            isOn: Binding(
+                                get: { !draft.isProviderHidden(provider) },
+                                set: { _ in
+                                    draft.toggleProviderHidden(provider)
+                                }
+                            )
+                        )
+                        .labelsHidden()
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        } header: {
+            Text(L10n.t("渠道显示与管理", "Channel Visibility"))
+        } footer: {
+            Text(L10n.t("开启或关闭各个渠道在看板与小组件中的展示。", "Toggle visibility of each channel in dashboard and widgets."))
         }
     }
 

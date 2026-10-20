@@ -46,7 +46,7 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 11.5
         case 2: return 10.5
-        default: return 10.0
+        default: return 9.5
         }
     }
 
@@ -168,11 +168,15 @@ struct SegmentedMultiProviderWidgetView: View {
                 ProviderGlyph(provider: p.provider, size: glyphSize, tint: .primary)
                     .frame(width: glyphSize, height: glyphSize)
 
-                Text(p.provider == .antigravity ? "Agy" : p.displayName)
-                    .font(.system(size: titleFontSize, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                if entry.showResetCredits, p.provider == .codex, let credits = p.resetCreditCount, credits > 0 {
+                    ResetCreditPill(count: credits, isAccent: true, fontSize: 8.5, iconSize: 7.0)
+                } else {
+                    Text(p.provider == .antigravity ? "Agy" : p.displayName)
+                        .font(.system(size: titleFontSize - 0.5, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
 
                 Spacer(minLength: 4)
 
@@ -183,19 +187,24 @@ struct SegmentedMultiProviderWidgetView: View {
                     let badgeTint: Color = isCritical ? AccessDeckTheme.danger : (isLow ? AccessDeckTheme.warning : Color.primary)
                     let badgeBg: Color = isCritical ? AccessDeckTheme.danger.opacity(0.16) : (isLow ? AccessDeckTheme.warning.opacity(0.14) : Color.primary.opacity(0.06))
 
-                    HStack(alignment: .bottom, spacing: 3.0) {
-                        // [5小时百分比 5h] 紧凑精致胶囊，避免挤占左侧渠道名
+                    HStack(alignment: .bottom, spacing: 2.5) {
+                        // [5小时百分比 5h] 紧凑精致胶囊，强制单行
                         HStack(spacing: 1.0) {
                             Text(compactPercent(splitWindows.fiveHour))
-                                .font(.system(size: max(6.8, percentFontSize - 2.8), weight: .bold, design: .rounded))
+                                .font(.system(size: max(6.8, percentFontSize - 2.5), weight: .bold, design: .rounded))
                                 .monospacedDigit()
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .foregroundStyle(badgeTint)
                             Text(p.nearestFiveHourDisplayText ?? "5h")
-                                .font(.system(size: max(5.8, percentFontSize - 4.2), weight: .semibold, design: .rounded))
+                                .font(.system(size: max(5.8, percentFontSize - 3.8), weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                                 .foregroundStyle(isLow ? badgeTint : Color.secondary)
                         }
-                        .padding(.horizontal, 3.0)
-                        .padding(.vertical, 1.0)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .padding(.horizontal, 2.5)
+                        .padding(.vertical, 0.8)
                         .background(
                             Capsule()
                                 .fill(badgeBg)
@@ -207,11 +216,14 @@ struct SegmentedMultiProviderWidgetView: View {
 
                         // 周额度百分比
                         Text(compactPercent(splitWindows.weekly))
-                            .font(.system(size: percentFontSize + 0.5, weight: .heavy, design: .rounded))
+                            .font(.system(size: percentFontSize, weight: .bold, design: .rounded))
                             .monospacedDigit()
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                             .foregroundStyle(Color.primary)
                     }
-                    .layoutPriority(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .layoutPriority(2)
                 } else {
                     Text("\(Int(percent.rounded()))%")
                         .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
@@ -251,6 +263,7 @@ struct SegmentedMultiProviderWidgetView: View {
                     }
 
                     Spacer(minLength: 0)
+
 
                     if showRightReset {
                         HStack(spacing: 2) {
@@ -392,8 +405,9 @@ struct SegmentedMultiProviderWidget: Widget {
     init() {}
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(
+        AppIntentConfiguration(
             kind: Self.kind,
+            intent: MultiProviderIntent.self,
             provider: MultiProviderTimelineProvider()
         ) { entry in
             SegmentedMultiProviderWidgetView(entry: entry, maxCount: 3)

@@ -35,16 +35,18 @@ struct SettingsProviderRow: View {
                 .foregroundStyle(canMoveDown ? Color.secondary : Color.secondary.opacity(0.2))
             }
 
-            // 显隐按钮
+            // 显隐按钮（支持点击切换菜单栏显隐）
             Button(action: toggleVisibility) {
-                Image(systemName: isVisible ? "eye.fill" : "eye.slash")
+                Image(systemName: isVisible ? "eye.fill" : "eye.slash.fill")
                     .font(.system(size: 10.5))
-                    .foregroundStyle(isVisible ? Color.primary : Color.secondary.opacity(0.35))
-                    .frame(width: 16, height: 16)
+                    .foregroundStyle(isVisible ? AccessDeckTheme.accent : AccessDeckTheme.warning)
+                    .frame(width: 18, height: 18)
+                    .background(
+                        Circle().fill(isVisible ? Color.primary.opacity(0.06) : AccessDeckTheme.warning.opacity(0.14))
+                    )
             }
             .buttonStyle(.plain)
-            .help(isVisible ? L10n.t("在菜单栏显示", "Visible in menu bar") : L10n.t("已在菜单栏隐藏", "Hidden from menu bar"))
-
+            .help(isVisible ? L10n.t("在菜单栏显示（点击隐藏）", "Shown in menu bar (click to hide)") : L10n.t("已在菜单栏隐藏（点击显示）", "Hidden from menu bar (click to show)"))
             // 渠道图示
             ProviderGlyph(provider: provider, size: 12)
 
@@ -52,6 +54,15 @@ struct SettingsProviderRow: View {
             Text(provider.displayName)
                 .font(.system(size: 11.5, weight: .medium))
                 .lineLimit(1)
+
+            if !isVisible {
+                Text(L10n.t("已隐藏", "Hidden"))
+                    .font(.system(size: 8.5, weight: .medium))
+                    .foregroundStyle(AccessDeckTheme.warning)
+                    .padding(.horizontal, 3.5)
+                    .padding(.vertical, 0.5)
+                    .background(AccessDeckTheme.warning.opacity(0.12), in: Capsule())
+            }
 
             // 账号数胶囊
             Text("\(accountCount)")

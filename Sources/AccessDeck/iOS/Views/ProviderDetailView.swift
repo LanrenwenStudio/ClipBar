@@ -5,12 +5,15 @@ struct ProviderDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppModel.self) private var model
     let provider: QuotaProvider
-
+    @State private var showingSchedulerSheet = false
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
                     headerHeroCard
+                    if provider == .codex {
+                        codexSchedulerBanner
+                    }
                     accountsList
                 }
                 .padding(16)
@@ -88,6 +91,56 @@ struct ProviderDetailView: View {
         .padding(16)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var codexSchedulerBanner: some View {
+        Button {
+            triggerHaptic(.light)
+            showingSchedulerSheet = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.title3)
+                    .foregroundStyle(AccessDeckTheme.brandColor(for: .codex))
+                    .frame(width: 36, height: 36)
+                    .background(AccessDeckTheme.brandColor(for: .codex).opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(L10n.t("Plus 额度智能调度", "Plus Quota Scheduler"))
+                            .font(.subheadline.weight(.semibold))
+                        let status = model.codexSchedulerStatus
+                        let isStale = status?.isStale ?? true
+                        Circle()
+                            .fill(status != nil ? (isStale ? AccessDeckTheme.warning : AccessDeckTheme.success) : Color.secondary)
+                            .frame(width: 7, height: 7)
+                    }
+
+                    if let plan = model.codexSchedulerStatus?.plan {
+                        Text(L10n.t("今日计划已生成 · 点击查看时点与执行记录", "Plan ready · Tap to view times & logs"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(L10n.t("半小时采样 · 每日 AI 规划 · 自动窗口唤醒", "30m sampling · Daily AI plan · Auto wake-up"))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(14)
+            .background(Color(uiColor: .secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingSchedulerSheet) {
+            CodexSchedulerDetailView()
+        }
     }
 
     private var accountsList: some View {
@@ -179,6 +232,28 @@ struct ProviderDetailView: View {
                         ForEach(row.snapshot.windows) { window in
                             let customHex = model.settings.customColorHex(for: provider)
                         QuotaBar(window: window, tint: AccessDeckTheme.progressColor(for: provider, remaining: window.remainingPercent, customHex: customHex))
+                        }
+                    }
+
+                    if provider == .codex {
+                        if let count = row.snapshot.resetCreditCount {
+                            HStack(spacing: 4) {
+                                Image(systemName: "creditcard.fill")
+                                    .font(.caption2)
+                                Text(L10n.t("重置卡：\(count) 张", "Reset credits: \(count)"))
+                                    .font(.caption.weight(.semibold))
+                            }
+                            .foregroundStyle(Color(red: 0.0, green: 0.52, blue: 1.0))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3.5)
+                            .background(
+                                Capsule()
+                                    .fill(Color(red: 0.0, green: 0.52, blue: 1.0).opacity(0.12))
+                            )
+                        } else {
+                            Text(L10n.t("重置卡：暂不可用", "Reset credits: unavailable"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

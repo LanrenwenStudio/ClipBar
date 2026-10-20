@@ -208,6 +208,33 @@ struct StatusBarSummaryTests {
         #expect(!StatusBarSummary.enabledAccounts(in: [empty]).contains { $0.snapshot.hasLiveData })
     }
 
+    @Test("Widget reset credits sum enabled Codex accounts without treating unknown as zero")
+    func widgetResetCredits() throws {
+        var first = row(id: "c1", provider: .codex, remaining: [0])
+        var second = row(id: "c2", provider: .codex, remaining: [40])
+        first.snapshot.resetCreditCount = 2
+        second.snapshot.resetCreditCount = 3
+        #expect(ProviderWidgetData.pooledResetCreditCount(in: [first, second], settings: .default) == 5)
+        second.snapshot.resetCreditCount = nil
+        #expect(ProviderWidgetData.pooledResetCreditCount(in: [first, second], settings: .default) == nil)
+        second.account.disabled = true
+        #expect(ProviderWidgetData.pooledResetCreditCount(in: [first, second], settings: .default) == 2)
+        first.snapshot.resetCreditCount = 0
+        #expect(ProviderWidgetData.pooledResetCreditCount(in: [first], settings: .default) == 0)
+        #expect(ProviderWidgetData.pooledResetCreditCount(in: [], settings: .default) == nil)
+        first.snapshot.resetCreditCount = Int.max
+        second.account.disabled = false
+        second.snapshot.resetCreditCount = 1
+        #expect(ProviderWidgetData.pooledResetCreditCount(in: [first, second], settings: .default) == nil)
+
+        let legacy = Data(#"{"providerRawValue":"codex","displayName":"Codex","accountCount":1,"healthyCount":1,"statusText":"正常","windows":[]}"#.utf8)
+        let decoded = try JSONDecoder().decode(ProviderWidgetData.self, from: legacy)
+        #expect(decoded.resetCreditCount == nil)
+        let current = ProviderWidgetData(providerRawValue: "codex", displayName: "Codex", remainingPercent: 0, accountCount: 1, healthyCount: 0, statusText: "已耗尽", windows: [], resetCreditCount: 0)
+        let restored = try JSONDecoder().decode(ProviderWidgetData.self, from: JSONEncoder().encode(current))
+        #expect(restored.resetCreditCount == 0)
+    }
+
     private func row(
         id: String,
         provider: QuotaProvider,

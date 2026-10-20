@@ -83,6 +83,8 @@ targets:
         type: file
       - path: Sources/AccessDeckWidgets/SegmentedPillBar.swift
         type: file
+      - path: Sources/AccessDeckWidgets/SelectProviderIntent.swift
+        type: file
     settings:
       base:
         PRODUCT_NAME: AccessDeck
@@ -94,6 +96,8 @@ targets:
         INFOPLIST_FILE: Sources/AccessDeck/iOS/Info.plist
         CODE_SIGN_ENTITLEMENTS: Sources/AccessDeck/AccessDeck-iOS.entitlements
         DEVELOPMENT_TEAM: "X37879TD5Q"
+        CODE_SIGN_STYLE: Manual
+        PROVISIONING_PROFILE_SPECIFIER: "AccessDeck-iOS-Development"
     entitlements:
       path: Sources/AccessDeck/AccessDeck-iOS.entitlements
       properties:
@@ -133,6 +137,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.lanrenwen.accessdeck.ios.widgets
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: Sources/AccessDeckWidgets/Info.plist
+        DEVELOPMENT_TEAM: "X37879TD5Q"
+        CODE_SIGN_STYLE: Manual
+        PROVISIONING_PROFILE_SPECIFIER: "AccessDeck-Widgets-iOS-Development"
     entitlements:
       path: Sources/AccessDeckWidgets/AccessDeckWidgets.entitlements
       properties:
