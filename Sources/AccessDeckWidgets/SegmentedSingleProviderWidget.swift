@@ -67,7 +67,7 @@ struct SegmentedSingleProviderQuotaCard: View {
                     .frame(width: 16, height: 16)
 
                 if showResetCredits, provider.provider == .codex, let count = provider.resetCreditCount, count > 0 {
-                    ResetCreditPill(count: count, isAccent: true, fontSize: 9.5, iconSize: 8.0)
+                    ResetCreditPill(count: count, expiresAt: provider.resetCreditExpiresAt, isAccent: true, fontSize: 9.5, iconSize: 8.0)
                 } else {
                     Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
                         .font(.system(size: 13.5, weight: .bold, design: .rounded))
@@ -141,6 +141,10 @@ struct SegmentedSingleProviderQuotaCard: View {
             } else {
                 let label = displayWindow?.label ?? (WidgetFormatter.isChinese ? "可用配额" : "Quota")
                 VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .font(.system(size: 11.0, weight: .medium))
+                        .foregroundStyle(Color.secondary)
+
                     HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text("\(Int(percent.rounded()))")
                             .font(.system(size: 34, weight: .heavy, design: .rounded))
@@ -149,23 +153,19 @@ struct SegmentedSingleProviderQuotaCard: View {
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundStyle(Color.secondary)
                     }
-
-                    Text(label)
-                        .font(.system(size: 9.5, weight: .medium))
-                        .foregroundStyle(Color.secondary)
                 }
             }
 
 
             Spacer(minLength: 6)
 
-            // 3. 分段进度条：细致高密度竖条阵列（32段、高度16pt、细密间隔2.2pt、微倒角1.0pt）
+            // 3. 纤细矩形竖向分段进度条（36段极窄矩形，间距1.8pt）
             SegmentedPillBar(
                 percent: percent,
-                totalSegments: 32,
+                totalSegments: 36,
                 barHeight: 16.0,
-                segmentSpacing: 2.2,
-                cornerRadius: 1.0,
+                segmentSpacing: 1.8,
+                cornerRadius: 0,
                 activeColor: activeColor
             )
 
@@ -210,23 +210,10 @@ struct SegmentedSingleProviderWidgetView: View {
     private var targetProvider: ProviderWidgetData? {
         let providers = entry.snapshot.providers
         guard !providers.isEmpty else { return nil }
-
-        switch entry.selectedChoice {
-        case .auto:
+        if entry.selectedChoice == .auto {
             return providers.first
-        case .codex:
-            return providers.first(where: { $0.providerRawValue == "codex" })
-        case .claude:
-            return providers.first(where: { $0.providerRawValue == "claude" })
-        case .gemini:
-            return providers.first(where: { $0.providerRawValue == "gemini" })
-        case .antigravity:
-            return providers.first(where: { $0.providerRawValue == "antigravity" })
-        case .grok:
-            return providers.first(where: { $0.providerRawValue == "xai" })
-        case .kimi:
-            return providers.first(where: { $0.providerRawValue == "kimi" })
         }
+        return providers.first(where: { entry.selectedChoice.matches(provider: $0) })
     }
 
     var body: some View {

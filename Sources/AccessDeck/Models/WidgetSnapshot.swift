@@ -23,6 +23,7 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
     let statusText: String
     let windows: [QuotaWindowSummary]
     let resetCreditCount: Int?
+    let resetCreditExpiresAt: Date?
 
     init(
         providerRawValue: String,
@@ -32,7 +33,8 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
         healthyCount: Int,
         statusText: String,
         windows: [QuotaWindowSummary],
-        resetCreditCount: Int? = nil
+        resetCreditCount: Int? = nil,
+        resetCreditExpiresAt: Date? = nil
     ) {
         self.providerRawValue = providerRawValue
         self.displayName = displayName
@@ -42,6 +44,7 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
         self.statusText = statusText
         self.windows = windows
         self.resetCreditCount = resetCreditCount
+        self.resetCreditExpiresAt = resetCreditExpiresAt
     }
     var provider: QuotaProvider {
         QuotaProvider(rawValue: providerRawValue) ?? .unknown
@@ -68,6 +71,14 @@ struct ProviderWidgetData: Codable, Identifiable, Sendable {
             total = sum.partialValue
         }
         return total
+    }
+
+    static func pooledResetCreditExpiresAt(in accounts: [AccountQuota], settings: AppSettings) -> Date? {
+        let enabled = StatusBarSummary.enabledAccounts(in: accounts, settings: settings)
+        return enabled.lazy
+            .filter { $0.account.provider == .codex && ($0.snapshot.resetCreditCount ?? 0) > 0 }
+            .compactMap(\.snapshot.resetCreditExpiresAt)
+            .min()
     }
 
     var nearestResetText: String? {

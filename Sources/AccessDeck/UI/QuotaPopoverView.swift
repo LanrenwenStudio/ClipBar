@@ -69,8 +69,8 @@ struct QuotaPopoverView: View {
     private var content: some View {
         if !model.settings.isConfigured {
             UnavailableStateView(
-                title: L10n.t("还没有接上 CLIProxyAPI", "CLIProxyAPI is not connected"),
-                detail: L10n.t("先填本地管理地址和密钥，再拉订阅额度。", "Add the local management URL and key to load subscription quotas."),
+                title: L10n.t("还没有接上 Magpie", "Magpie is not connected"),
+                detail: L10n.t("先填 Magpie 管理地址和网页密钥，再拉订阅额度。", "Add the Magpie management URL and web key to load subscription quotas."),
                 systemImage: "plug",
                 actionTitle: L10n.t("填写密钥", "Enter key"),
                 action: model.openSettings
@@ -90,7 +90,7 @@ struct QuotaPopoverView: View {
             default:
                 UnavailableStateView(
                     title: L10n.t("没有订阅账号", "No subscription accounts"),
-                    detail: L10n.t("确认 CLIProxyAPI 已启动，并且 auth 目录里有 Codex / Claude / Gemini / Antigravity 账号。", "Make sure CLIProxyAPI is running and has Codex, Claude, Gemini, or Antigravity auth files."),
+                    detail: L10n.t("确认 Magpie 已启动并已添加订阅账号。", "Make sure Magpie is running and has subscription accounts."),
                     systemImage: "person.3"
                 )
             }

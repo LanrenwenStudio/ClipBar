@@ -3,7 +3,25 @@ import SwiftUI
 
 @main
 struct AccessDeckIOSApp: App {
-    @State private var model = AppModel()
+    @State private var model: AppModel
+
+    init() {
+        let store = SettingsStore()
+        #if DEBUG
+        let environment = ProcessInfo.processInfo.environment
+        if let url = environment["ACCESSDECK_SETUP_URL"],
+           let key = environment["ACCESSDECK_SETUP_WEB_KEY"] {
+            var settings = store.load()
+            print("AccessDeck setup: saved URL matches:", settings.normalizedBaseURL == url)
+            print("AccessDeck setup: saved key matches:", settings.normalizedManagementKey == key)
+            settings.baseURL = url
+            settings.managementKey = key
+            store.save(settings)
+            print("AccessDeck setup: key persisted:", store.load().normalizedManagementKey == key)
+        }
+        #endif
+        _model = State(initialValue: AppModel(store: store))
+    }
 
     var body: some Scene {
         WindowGroup {

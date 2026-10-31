@@ -2,17 +2,34 @@
 import AppKit
 
 enum ProviderIcon {
-    static func image(for provider: QuotaProvider, size: CGFloat = 13) -> NSImage? {
-        let name: String
+    static func resourceName(for provider: QuotaProvider) -> String? {
         switch provider {
-        case .codex: name = "ProviderIcon-codex"
-        case .claude: name = "ProviderIcon-claude"
-        case .geminiCLI: name = "ProviderIcon-gemini"
-        case .antigravity: name = "ProviderIcon-antigravity"
-        case .xai: name = "ProviderIcon-grok"
-        case .kimi: name = "ProviderIcon-kimi"
-        case .unknown: return nil
+        case .codex: "ProviderIcon-codex"
+        case .claude: "ProviderIcon-claude"
+        case .geminiCLI: "ProviderIcon-gemini"
+        case .antigravity: "ProviderIcon-antigravity"
+        case .xai: "ProviderIcon-grok"
+        case .kimi: "ProviderIcon-kimi"
+        case .workbuddy: "ProviderIcon-workbuddy"
+        case .qoder: "ProviderIcon-qoder"
+        case .trae: "ProviderIcon-trae"
+        case .minimax: "ProviderIcon-minimax"
+        case .copilot: "ProviderIcon-copilot"
+        case .deepseek: "ProviderIcon-deepseek"
+        case .zcode: "ProviderIcon-zcode"
+        case .stepfun: "ProviderIcon-stepfun"
+        case .qwen: "ProviderIcon-qwen"
+        case .doubao: "ProviderIcon-doubao"
+        case .zhipu: "ProviderIcon-zhipu"
+        case .hunyuan: "ProviderIcon-hunyuan"
+        case .openrouter: "ProviderIcon-openrouter"
+        case .ollama: "ProviderIcon-ollama"
+        default: nil
         }
+    }
+
+    static func image(for provider: QuotaProvider, size: CGFloat = 13) -> NSImage? {
+        guard let name = resourceName(for: provider) else { return nil }
 
         let url = Bundle.main.url(forResource: name, withExtension: "svg")
             ?? Bundle.main.url(forResource: name, withExtension: "svg", subdirectory: "Icons")
@@ -30,22 +47,66 @@ enum ProviderIcon {
         rendered.isTemplate = true
         return rendered
     }
+
+    static func systemFallbackName(for provider: QuotaProvider) -> String {
+        switch provider {
+        case .codex: "chevron.left.forwardslash.chevron.right"
+        case .claude: "sparkles"
+        case .geminiCLI: "sparkle"
+        case .antigravity: "atom"
+        case .xai: "bolt.fill"
+        case .kimi: "moon.stars.fill"
+        case .workbuddy: "briefcase.fill"
+        case .qoder: "chevron.left.forwardslash.chevron.right"
+        case .trae: "cursorarrow.rays"
+        case .minimax: "waveform.path.ecg"
+        case .copilot: "airplane.departure"
+        case .deepseek: "magnifyingglass.circle.fill"
+        case .zcode: "z.square.fill"
+        case .stepfun: "star.fill"
+        case .qwen: "cloud.sun.fill"
+        case .doubao: "flame.fill"
+        case .zhipu: "brain.head.profile"
+        case .hunyuan: "water.waves"
+        case .openrouter: "network"
+        case .ollama: "laptopcomputer"
+        case .zen: "leaf.fill"
+        case .unknown: "server.rack"
+        }
+    }
 }
 #elseif os(iOS)
 import UIKit
 
 enum ProviderIcon {
-    static func image(for provider: QuotaProvider, size: CGFloat = 16) -> UIImage? {
-        let name: String
+    static func resourceName(for provider: QuotaProvider) -> String? {
         switch provider {
-        case .codex: name = "ProviderIcon-codex"
-        case .claude: name = "ProviderIcon-claude"
-        case .geminiCLI: name = "ProviderIcon-gemini"
-        case .antigravity: name = "ProviderIcon-antigravity"
-        case .xai: name = "ProviderIcon-grok"
-        case .kimi: name = "ProviderIcon-kimi"
-        case .unknown: return nil
+        case .codex: "ProviderIcon-codex"
+        case .claude: "ProviderIcon-claude"
+        case .geminiCLI: "ProviderIcon-gemini"
+        case .antigravity: "ProviderIcon-antigravity"
+        case .xai: "ProviderIcon-grok"
+        case .kimi: "ProviderIcon-kimi"
+        case .workbuddy: "ProviderIcon-workbuddy"
+        case .qoder: "ProviderIcon-qoder"
+        case .trae: "ProviderIcon-trae"
+        case .minimax: "ProviderIcon-minimax"
+        case .copilot: "ProviderIcon-copilot"
+        case .deepseek: "ProviderIcon-deepseek"
+        case .zcode: "ProviderIcon-zcode"
+        case .stepfun: "ProviderIcon-stepfun"
+        case .qwen: "ProviderIcon-qwen"
+        case .doubao: "ProviderIcon-doubao"
+        case .zhipu: "ProviderIcon-zhipu"
+        case .hunyuan: "ProviderIcon-hunyuan"
+        case .openrouter: "ProviderIcon-openrouter"
+        case .ollama: "ProviderIcon-ollama"
+        default: nil
         }
+    }
+
+    static func image(for provider: QuotaProvider, size: CGFloat = 16) -> UIImage? {
+        guard let name = resourceName(for: provider) else { return nil }
 
         let url = Bundle.main.url(forResource: name, withExtension: "png")
             ?? Bundle.main.url(forResource: name, withExtension: "png", subdirectory: "Icons")
@@ -57,6 +118,7 @@ enum ProviderIcon {
         }
         return img.withRenderingMode(.alwaysTemplate)
     }
+
     static func systemFallbackName(for provider: QuotaProvider) -> String {
         switch provider {
         case .codex: "chevron.left.forwardslash.chevron.right"
@@ -65,6 +127,21 @@ enum ProviderIcon {
         case .antigravity: "atom"
         case .xai: "bolt.fill"
         case .kimi: "moon.stars.fill"
+        case .workbuddy: "briefcase.fill"
+        case .qoder: "chevron.left.forwardslash.chevron.right"
+        case .trae: "cursorarrow.rays"
+        case .minimax: "waveform.path.ecg"
+        case .copilot: "airplane.departure"
+        case .deepseek: "magnifyingglass.circle.fill"
+        case .zcode: "z.square.fill"
+        case .stepfun: "star.fill"
+        case .qwen: "cloud.sun.fill"
+        case .doubao: "flame.fill"
+        case .zhipu: "brain.head.profile"
+        case .hunyuan: "water.waves"
+        case .openrouter: "network"
+        case .ollama: "laptopcomputer"
+        case .zen: "leaf.fill"
         case .unknown: "server.rack"
         }
     }

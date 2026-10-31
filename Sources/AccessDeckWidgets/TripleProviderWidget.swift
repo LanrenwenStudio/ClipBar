@@ -9,17 +9,23 @@ struct MultiProviderEntry: TimelineEntry {
     let snapshot: AccessDeckWidgetSnapshot
     let style: WidgetProgressBarStyle
     let showResetCredits: Bool
+    let channelCount: Int
+    let selectedProviders: [WidgetProviderChoice]
 
     init(
         date: Date,
         snapshot: AccessDeckWidgetSnapshot,
         style: WidgetProgressBarStyle = .segmented,
-        showResetCredits: Bool = true
+        showResetCredits: Bool = true,
+        channelCount: Int = 4,
+        selectedProviders: [WidgetProviderChoice] = [.auto, .auto, .auto, .auto]
     ) {
         self.date = date
         self.snapshot = snapshot
         self.style = style
         self.showResetCredits = showResetCredits
+        self.channelCount = channelCount
+        self.selectedProviders = selectedProviders
     }
 }
 
@@ -31,7 +37,14 @@ struct MultiProviderTimelineProvider: AppIntentTimelineProvider {
     typealias Intent = MultiProviderIntent
 
     func placeholder(in context: Context) -> MultiProviderEntry {
-        MultiProviderEntry(date: Date(), snapshot: .preview, style: .segmented, showResetCredits: true)
+        MultiProviderEntry(
+            date: Date(),
+            snapshot: .preview,
+            style: .segmented,
+            showResetCredits: true,
+            channelCount: 4,
+            selectedProviders: [.auto, .auto, .auto, .auto]
+        )
     }
 
     func snapshot(for configuration: MultiProviderIntent, in context: Context) async -> MultiProviderEntry {
@@ -40,7 +53,14 @@ struct MultiProviderTimelineProvider: AppIntentTimelineProvider {
             date: Date(),
             snapshot: snapshot.providers.isEmpty ? .preview : snapshot,
             style: configuration.style,
-            showResetCredits: configuration.showResetCredits
+            showResetCredits: configuration.showResetCredits,
+            channelCount: configuration.count.rawValue,
+            selectedProviders: [
+                configuration.channel1,
+                configuration.channel2,
+                configuration.channel3,
+                configuration.channel4
+            ]
         )
     }
 
@@ -50,7 +70,14 @@ struct MultiProviderTimelineProvider: AppIntentTimelineProvider {
             date: Date(),
             snapshot: snapshot.providers.isEmpty ? .preview : snapshot,
             style: configuration.style,
-            showResetCredits: configuration.showResetCredits
+            showResetCredits: configuration.showResetCredits,
+            channelCount: configuration.count.rawValue,
+            selectedProviders: [
+                configuration.channel1,
+                configuration.channel2,
+                configuration.channel3,
+                configuration.channel4
+            ]
         )
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date()
         return Timeline(entries: [entry], policy: .after(nextUpdate))
@@ -61,14 +88,17 @@ typealias TripleProviderTimelineProvider = MultiProviderTimelineProvider
 
 struct MultiProviderWidgetView: View {
     let entry: MultiProviderEntry
-    let maxCount: Int
+    var maxCount: Int = 4
 
     private var displayProviders: [ProviderWidgetData] {
-        let list = entry.snapshot.providers.isEmpty
-            ? entry.snapshot.topThreeProviders
+        let all = entry.snapshot.providers.isEmpty
+            ? AccessDeckWidgetSnapshot.preview.providers
             : entry.snapshot.providers
-
-        return Array(list.prefix(maxCount))
+        return resolveDisplayProviders(
+            allProviders: all,
+            choices: entry.selectedProviders,
+            targetCount: max(1, min(4, entry.channelCount))
+        )
     }
 
     private var count: Int {
@@ -81,44 +111,40 @@ struct MultiProviderWidgetView: View {
 
     private var glyphSize: CGFloat {
         switch count {
-        case 5: return 11
-        case 4: return 12
-        case 3: return 13.0
+        case 1: return 14.5
         case 2: return 13.5
-        default: return 14.5
+        case 3: return 12.5
+        default: return 10.5
         }
     }
 
     private var percentFontSize: CGFloat {
         switch count {
-        case 5: return 8.5
-        case 4: return 9.0
-        case 3: return 9.5
+        case 1: return 11.0
         case 2: return 10.0
-        default: return 11.0
+        case 3: return 9.5
+        default: return 8.5
         }
     }
 
     private var barHeight: CGFloat {
         switch count {
-        case 5: return 5.0
-        case 4: return 6.0
-        case 3: return 7.5
-        case 2: return 10.0
-        default: return 12.0
+        case 1: return 6.0
+        case 2: return 5.0
+        case 3: return 4.5
+        default: return 3.8
         }
     }
 
     private var barRadius: CGFloat {
-        switch count {
-        case 1, 2: return 3.0
-        default: return 2.0
-        }
+        barHeight / 2
     }
 
     var body: some View {
         if !entry.snapshot.isConfigured || entry.snapshot.providers.isEmpty {
             unconfiguredView
+        } else if entry.style == .segmented {
+            SegmentedMultiProviderWidgetView(entry: entry, maxCount: entry.channelCount)
         } else {
             multiProviderCard
         }
@@ -157,14 +183,12 @@ struct MultiProviderWidgetView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 15)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
+        .padding(.horizontal, count >= 4 ? 13 : 15)
+        .padding(.top, count >= 4 ? 8 : 10)
+        .padding(.bottom, count >= 4 ? 8 : 10)
     }
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
-        let percent = min(100, max(0, p.remainingPercent ?? 0))
-        let rowColor = AccessDeckTheme.widgetBarColor(for: p.provider, remaining: percent)
         let splitWindows = splitQuotaWindows(for: p)
         let reset = WidgetFormatter.formatResetText(p.nearestResetText ?? p.windows.first?.resetText)
 
@@ -174,7 +198,7 @@ struct MultiProviderWidgetView: View {
                     .frame(width: glyphSize, height: glyphSize)
 
                 if entry.showResetCredits, p.provider == .codex, let credits = p.resetCreditCount, credits > 0 {
-                    ResetCreditPill(count: credits, isAccent: true, fontSize: 8.5, iconSize: 7.0)
+                    ResetCreditPill(count: credits, expiresAt: p.resetCreditExpiresAt, isAccent: true, fontSize: 8.5, iconSize: 7.0)
                 } else {
                     Text(p.provider == .antigravity ? "Agy" : p.displayName)
                         .font(.system(size: count >= 4 ? 10.0 : 11.0, weight: .semibold, design: .rounded))
@@ -230,38 +254,44 @@ struct MultiProviderWidgetView: View {
                     .fixedSize(horizontal: true, vertical: false)
                     .layoutPriority(2)
                 } else {
-                    Text("\(Int(percent.rounded()))%")
-                        .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .layoutPriority(1)
-                }
-            }
-
-            if let splitWindows {
-                dualQuotaBars(
-                    fiveHour: splitWindows.fiveHour,
-                    weekly: splitWindows.weekly,
-                    provider: p.provider
-                )
-            } else {
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                            .fill(Color.primary.opacity(0.08))
-                            .frame(height: barHeight)
-
-                        RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                            .fill(rowColor)
-                            .frame(
-                                width: percent <= 0 ? 0 : max(barRadius, geo.size.width * CGFloat(percent / 100.0)),
-                                height: barHeight
-                            )
+                    if let rem = p.remainingPercent {
+                        Text("\(Int(min(100, max(0, rem)).rounded()))%")
+                            .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .layoutPriority(1)
+                    } else {
+                        Text("免费")
+                            .font(.system(size: max(8.0, percentFontSize - 0.5), weight: .bold, design: .rounded))
+                            .foregroundStyle(AccessDeckTheme.success)
+                            .lineLimit(1)
+                            .layoutPriority(1)
                     }
                 }
-                .frame(height: barHeight)
             }
+
+            // 进度条：统一整条连续平滑微胶囊（与头部周额度呼应，纤细精致）
+            let mainPercent = splitWindows?.weekly.remainingPercent ?? (p.remainingPercent ?? 100)
+            let barColor = p.remainingPercent != nil
+                ? AccessDeckTheme.widgetBarColor(for: p.provider, remaining: mainPercent)
+                : AccessDeckTheme.success
+
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.08))
+                        .frame(height: barHeight)
+
+                    Rectangle()
+                        .fill(barColor)
+                        .frame(
+                            width: mainPercent <= 0 ? 0 : max(0, min(geo.size.width, geo.size.width * CGFloat(mainPercent / 100.0))),
+                            height: barHeight
+                        )
+                }
+            }
+            .frame(height: barHeight)
 
             let fiveHourDuration = splitWindows.flatMap { formatRemainingDuration($0.fiveHour.resetText) }
             let weeklyResetRaw = splitWindows.flatMap { WidgetFormatter.formatResetText($0.weekly.resetText) }
@@ -344,48 +374,6 @@ struct MultiProviderWidgetView: View {
             || label.contains("weekly")
     }
 
-    private func dualQuotaBars(
-        fiveHour: QuotaWindowSummary,
-        weekly: QuotaWindowSummary,
-        provider: QuotaProvider
-    ) -> some View {
-        HStack(alignment: .center, spacing: 6) {
-            compactQuotaBar(fiveHour, label: "5h", provider: provider)
-            compactQuotaBar(
-                weekly,
-                label: WidgetFormatter.isChinese ? "周" : "Week",
-                provider: provider
-            )
-        }
-    }
-
-    private func compactQuotaBar(
-        _ window: QuotaWindowSummary,
-        label: String,
-        provider: QuotaProvider
-    ) -> some View {
-        let percent = min(100, max(0, window.remainingPercent ?? 0))
-        let color = AccessDeckTheme.widgetBarColor(for: provider, remaining: window.remainingPercent)
-
-        return GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
-                    .frame(height: barHeight)
-
-                RoundedRectangle(cornerRadius: barRadius, style: .continuous)
-                    .fill(color)
-                    .frame(
-                        width: percent <= 0 ? 0 : max(barRadius, geo.size.width * CGFloat(percent / 100.0)),
-                        height: barHeight
-                    )
-            }
-        }
-        .frame(height: barHeight)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(label) \(compactPercent(window))")
-    }
     private var placeholderRow: some View {
         VStack(alignment: .leading, spacing: 2.5) {
             HStack(spacing: 5) {
@@ -442,15 +430,15 @@ struct TripleProviderWidget: Widget {
         ) { entry in
             Group {
                 if entry.style == .continuous {
-                    MultiProviderWidgetView(entry: entry, maxCount: 3)
+                    MultiProviderWidgetView(entry: entry, maxCount: entry.channelCount)
                 } else {
-                    SegmentedMultiProviderWidgetView(entry: entry, maxCount: 3)
+                    SegmentedMultiProviderWidgetView(entry: entry, maxCount: entry.channelCount)
                 }
             }
             .containerBackground(Color(uiColor: .systemBackground), for: .widget)
         }
         .configurationDisplayName("多渠道概览")
-        .description("展示主力 AI 渠道的额度与健康状态，支持在设置中切换分段或连续进度条。")
+        .description("展示主力 AI 渠道的额度与健康状态，支持在设置中自选 1~4 个渠道及切换进度条样式。")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

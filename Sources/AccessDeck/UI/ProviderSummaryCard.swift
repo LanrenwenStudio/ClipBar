@@ -12,7 +12,7 @@ struct ProviderSummaryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .center, spacing: 6) {
-                ProviderGlyph(provider: provider, size: 12)
+                ProviderGlyph(provider: provider, size: 12, tint: AccessDeckTheme.providerColor(for: provider, customHex: customHex))
                 Text(provider.displayName)
                     .font(.system(size: 12, weight: .semibold))
                     .lineLimit(1)
@@ -37,12 +37,23 @@ struct ProviderSummaryCard: View {
                     .help(L10n.t("点击重新在状态栏显示此渠道", "Click to show this channel in menu bar"))
                 }
                 Spacer(minLength: 4)
-                Text(AccessDeckTheme.percentText(remaining))
-                    .font(.system(size: 12.5, weight: .bold, design: .monospaced))
-                    .foregroundStyle(percentColor)
+                if remaining != nil {
+                    Text(AccessDeckTheme.percentText(remaining))
+                        .font(.system(size: 12.5, weight: .bold, design: .monospaced))
+                        .foregroundStyle(percentColor)
+                } else {
+                    Text(L10n.t("免费/无限制", "Free/Ready"))
+                        .font(.system(size: 9.5, weight: .semibold))
+                        .foregroundStyle(AccessDeckTheme.success)
+                        .padding(.horizontal, 5)
+                        .padding(.vertical, 1.5)
+                        .background(AccessDeckTheme.success.opacity(0.12), in: Capsule())
+                }
             }
 
-            quotaBar(for: remaining, color: percentColor)
+            if remaining != nil {
+                quotaBar(for: remaining, color: percentColor)
+            }
 
             if let weeklyRemaining {
                 HStack(alignment: .firstTextBaseline) {
@@ -57,30 +68,6 @@ struct ProviderSummaryCard: View {
                 quotaBar(for: weeklyRemaining, color: weeklyColor)
             }
 
-            if provider == .codex {
-                Divider().opacity(0.3)
-                HStack(spacing: 5) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 9))
-                        .foregroundStyle(AccessDeckTheme.brandColor(for: .codex))
-                    Text(L10n.t("Plus 额度智能调度", "Plus Quota Scheduler"))
-                        .font(.system(size: 9.5, weight: .medium))
-                    Spacer()
-                    Button(action: { showingSchedulerSheet = true }) {
-                        HStack(spacing: 2) {
-                            Text(L10n.t("查看计划与记录", "View Plan & Logs"))
-                                .font(.system(size: 9.5, weight: .medium))
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 8))
-                        }
-                        .foregroundStyle(AccessDeckTheme.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .sheet(isPresented: $showingSchedulerSheet) {
-                    CodexSchedulerDetailView()
-                }
-            }
         }
         .padding(10)
         .background(

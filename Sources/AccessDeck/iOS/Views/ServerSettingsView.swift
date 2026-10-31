@@ -45,6 +45,9 @@ struct ServerSettingsView: View {
             }
             .onAppear {
                 draft = model.settings
+                if draft.baseURL.contains(":8317") || draft.baseURL.isEmpty {
+                    draft.baseURL = AppSettings.defaultBaseURL
+                }
             }
         }
     }
@@ -54,22 +57,32 @@ struct ServerSettingsView: View {
     private var connectionSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.t("CLIProxyAPI 地址", "CLIProxyAPI URL"))
+                Text(L10n.t("Magpie 管理地址", "Magpie management URL"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.secondary)
 
-                TextField("http://127.0.0.1:8317", text: $draft.baseURL)
+                TextField("http://192.168.1.3:3430", text: $draft.baseURL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .keyboardType(.URL)
 
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        PresetPill(title: "Localhost (127.0.0.1:8317)") {
-                            draft.baseURL = "http://127.0.0.1:8317"
+                        PresetPill(title: L10n.t("电脑 · 3425", "Desktop · 3425")) {
+                            draft.baseURL = "http://192.168.1.158:3425"
+                            draft.managementKey = AppSettings.builtinDesktopGatewayKey
                         }
-                        PresetPill(title: "CPA LAN · 8317") {
+                        PresetPill(title: L10n.t("软路由 · 3425", "Router · 3425")) {
+                            draft.baseURL = "http://192.168.1.3:3425"
+                            draft.managementKey = AppSettings.builtinRouterGatewayKey
+                        }
+                        PresetPill(title: L10n.t("软路由 · 3430", "Router · 3430")) {
+                            draft.baseURL = "http://192.168.1.3:3430"
+                            draft.managementKey = AppSettings.builtinRouterWebKey
+                        }
+                        PresetPill(title: L10n.t("双端自动故障转移", "Auto Failover")) {
                             draft.baseURL = AppSettings.defaultBaseURL
+                            draft.managementKey = AppSettings.defaultManagementKey
                         }
                     }
                     .padding(.vertical, 4)
@@ -85,11 +98,11 @@ struct ServerSettingsView: View {
 
                 HStack {
                     if revealsKey {
-                        TextField(L10n.t("输入 CPA 管理密钥", "Enter CPA management key"), text: $draft.managementKey)
+                        TextField(L10n.t("输入 Magpie 网关 Key 或网页密钥", "Enter Gateway Key or Web Key"), text: $draft.managementKey)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     } else {
-                        SecureField(L10n.t("输入 CPA 管理密钥", "Enter CPA management key"), text: $draft.managementKey)
+                        SecureField(L10n.t("输入 Magpie 网关 Key 或网页密钥", "Enter Gateway Key or Web Key"), text: $draft.managementKey)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     }
@@ -104,9 +117,12 @@ struct ServerSettingsView: View {
             }
             .padding(.vertical, 4)
         } header: {
-            Text(L10n.t("CLIProxyAPI 连接", "CLIProxyAPI Connection"))
+            Text(L10n.t("Magpie 连接", "Magpie Connection"))
         } footer: {
-            Text(L10n.t("AccessDeck 通过 CLIProxyAPI 管理接口直接探测额度。", "AccessDeck probes quotas directly through the CLIProxyAPI management API."))
+            Text(L10n.t(
+                "已内置开箱即用自动故障转移：优先连接电脑桌面端 Magpie（3425），若电脑离线或未启动，自动无缝降级读取软路由（3425/3430），无需手动配置。",
+                "Built-in zero-config failover: prioritizes Desktop Magpie (3425), and seamlessly falls back to Router (3425/3430) if Desktop is offline."
+            ))
         }
     }
 
@@ -118,7 +134,7 @@ struct ServerSettingsView: View {
                 Text(L10n.t("当前连接方式", "Current Connection Method"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text(model.settings.isConfigured ? L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI") : L10n.t("尚未配置", "Not configured"))
+                Text(model.settings.isConfigured ? L10n.t("Magpie 双端故障转移 (电脑优先)", "Magpie Dual Failover (Desktop Priority)") : L10n.t("尚未配置", "Not configured"))
                     .font(.subheadline.weight(.medium))
             }
             Spacer()

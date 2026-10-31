@@ -1,7 +1,7 @@
 import SwiftUI
 import WidgetKit
 
-/// 锁屏多渠道矩形小组件（2×4 紧凑条目样式：支持同时清晰展示 5 小时与周额度）
+/// 锁屏多渠道矩形小组件（支持 1~4 渠道紧凑监控：精简名称、仅显示总量配额、纯矩形进度条）
 struct LockScreenMultiProviderWidget: Widget {
     static let kind: String = "LockScreenMultiProviderWidget"
 
@@ -17,7 +17,7 @@ struct LockScreenMultiProviderWidget: Widget {
                 }
         }
         .configurationDisplayName("多渠道锁屏额度")
-        .description("在锁屏矩形区域同时展示各渠道的 5 小时与周额度。")
+        .description("在锁屏矩形区域同时展示最多 4 个渠道的总量额度与进度。")
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -26,14 +26,55 @@ struct LockScreenMultiProviderView: View {
     let entry: MultiProviderEntry
 
     private var providers: [ProviderWidgetData] {
-        let list = entry.snapshot.providers.isEmpty
-            ? entry.snapshot.topThreeProviders
+        let all = entry.snapshot.providers.isEmpty
+            ? AccessDeckWidgetSnapshot.preview.providers
             : entry.snapshot.providers
-        return Array(list.prefix(3))
+        return resolveDisplayProviders(
+            allProviders: all,
+            choices: entry.selectedProviders,
+            targetCount: 4
+        )
+    }
+
+    private var count: Int {
+        max(1, providers.count)
     }
 
     private var freshnessText: String {
         WidgetFormatter.freshnessText(from: entry.snapshot.lastUpdated)
+    }
+
+    // 针对 1~4 个渠道自适应尺寸
+    private var iconSize: CGFloat {
+        count >= 4 ? 7.5 : (count == 3 ? 8.5 : 9.5)
+    }
+
+    private var nameFontSize: CGFloat {
+        count >= 4 ? 7.2 : (count == 3 ? 8.0 : 8.8)
+    }
+
+    private var nameColumnWidth: CGFloat {
+        count >= 4 ? 35.0 : 38.0
+    }
+
+    private var barHeight: CGFloat {
+        count >= 4 ? 5.0 : (count == 3 ? 6.0 : 7.0)
+    }
+
+    private var segmentCount: Int {
+        count >= 4 ? 20 : 22
+    }
+
+    private var segmentSpacing: CGFloat {
+        1.6
+    }
+
+    private var percentFontSize: CGFloat {
+        count >= 4 ? 7.5 : (count == 3 ? 8.2 : 9.0)
+    }
+
+    private var rowSpacing: CGFloat {
+        count >= 4 ? 1.5 : (count == 3 ? 3.0 : 5.0)
     }
 
     var body: some View {
@@ -45,7 +86,7 @@ struct LockScreenMultiProviderView: View {
             }
         } else {
             VStack(alignment: .leading, spacing: 0) {
-                // 顶部紧凑状态栏：账号总数 + 更新时间（保持清晰的主前景色）
+                // 顶部紧凑状态栏：健康账号数/总数 + 更新时间
                 HStack(alignment: .center, spacing: 3) {
                     HStack(spacing: 2) {
                         Image(systemName: "person.2.fill")
@@ -65,14 +106,13 @@ struct LockScreenMultiProviderView: View {
                     }
                     .foregroundStyle(.primary)
                 }
-                .padding(.bottom, 2)
+                .padding(.bottom, count >= 4 ? 1.5 : 2.5)
 
-                // 各渠道行（紧凑纵向排列）
-                ForEach(Array(providers.enumerated()), id: \.element.id) { index, p in
-                    if index > 0 {
-                        Spacer(minLength: 1)
+                // 各渠道行（最多展示 4 个渠道）
+                VStack(spacing: rowSpacing) {
+                    ForEach(providers) { p in
+                        providerRow(p)
                     }
-                    providerRow(p)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -80,118 +120,78 @@ struct LockScreenMultiProviderView: View {
     }
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
-        let split = splitQuotaWindows(for: p)
-        let primaryPercent = min(100, max(0, p.remainingPercent ?? 0))
+        // 只取总量配额（优先取周额度，其次取 remainingPercent）
+        let totalPercent = resolveTotalPercent(for: p)
 
-        let barPercent = split?.weekly ?? primaryPercent
-
-        return HStack(alignment: .center, spacing: 3.0) {
-            // 1. 图标、渠道名或重置卡微胶囊
+        return HStack(alignment: .center, spacing: 3.5) {
+            // 1. 图标 + 精简渠道名（不再显示重置卡数量）
             HStack(spacing: 2.0) {
-                ProviderGlyph(provider: p.provider, size: 9.0)
-                    .frame(width: 9.0, height: 9.0)
-                if entry.showResetCredits, p.provider == .codex, let credits = p.resetCreditCount, credits > 0 {
-                    ResetCreditPill(count: credits, isAccent: false, fontSize: 6.0, iconSize: 5.0)
-                } else {
-                    Text(p.provider == .antigravity ? "Agy" : p.displayName)
-                        .font(.system(size: 7.5, weight: .semibold, design: .rounded))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
+                ProviderGlyph(provider: p.provider, size: iconSize)
+                    .frame(width: iconSize, height: iconSize)
+                Text(shortName(for: p))
+                    .font(.system(size: nameFontSize, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
             }
-            .frame(width: 33, alignment: .leading)
+            .frame(width: nameColumnWidth, alignment: .leading)
 
-            // 2. 中间：进度条（宽度扩展至 36pt，自动吸收多余空白，消除稀疏感）
-            VStack(spacing: 1) {
-                if entry.style == .continuous {
-                    ContinuousPillBar(
-                        percent: barPercent,
-                        barHeight: 6.5,
-                        cornerRadius: 1.8,
-                        activeColor: .primary,
-                        inactiveColor: Color.primary.opacity(0.18)
-                    )
-                    .frame(width: 36)
-                } else {
-                    SegmentedPillBar(
-                        percent: barPercent,
-                        totalSegments: 10,
-                        barHeight: 6.5,
-                        segmentSpacing: 1.2,
-                        cornerRadius: 0.7,
-                        activeColor: .primary,
-                        inactiveColor: Color.primary.opacity(0.18)
-                    )
-                    .frame(width: 36)
-                }
-            }
-            .frame(width: 36)
+            // 2. 中间：直角矩形分段竖条进度条（充满剩余空间，严格使用分段条，不要实线）
+            SegmentedPillBar(
+                percent: totalPercent,
+                totalSegments: segmentCount,
+                barHeight: barHeight,
+                segmentSpacing: segmentSpacing,
+                cornerRadius: 0,
+                activeColor: .primary,
+                inactiveColor: Color.primary.opacity(0.18)
+            )
+            .frame(maxWidth: .infinity)
 
-            Spacer(minLength: 4)
-            // 3. 右侧数值：5h 胶囊 + 周额度（采用 monospacedDigit 紧凑排布，确保 100% 不溢出）
-            Group {
-                if let split {
-                    HStack(spacing: 1.5) {
-                        HStack(spacing: 1.0) {
-                            Text("\(Int(split.fiveHour.rounded()))%")
-                                .font(.system(size: 7.2, weight: .bold, design: .rounded))
-                                .monospacedDigit()
-                            Text(p.nearestFiveHourDisplayText ?? "5h")
-                                .font(.system(size: 6.0, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 2.5)
-                        .padding(.vertical, 0.8)
-                        .background(
-                            Capsule()
-                                .fill(Color.primary.opacity(0.12))
-                        )
-
-                        Text("/")
-                            .font(.system(size: 6.0, weight: .regular))
-                            .foregroundStyle(.secondary)
-
-                        Text("\(Int(split.weekly.rounded()))%")
-                            .font(.system(size: 7.5, weight: .bold, design: .rounded))
-                            .monospacedDigit()
-                    }
-                } else {
-                    Text("\(Int(primaryPercent.rounded()))%")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                }
-            }
-            .lineLimit(1)
-            .fixedSize()
+            // 3. 右侧：只显示总量百分比
+            Text("\(Int(totalPercent.rounded()))%")
+                .font(.system(size: percentFontSize, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .lineLimit(1)
+                .frame(width: 25, alignment: .trailing)
         }
     }
 
-    private func splitQuotaWindows(for provider: ProviderWidgetData) -> (fiveHour: Double, weekly: Double)? {
-        let windows = provider.windows
-        guard windows.count >= 2 else { return nil }
-
-        // 查找 5 小时窗口
-        let fiveHourWindow = windows.first { w in
-            let text = (w.label + " " + w.id).lowercased()
-            return text.contains("5h") || text.contains("rate_limit") || text.contains("5小时")
-        }
-
-        // 查找 周 窗口
-        let weeklyWindow = windows.first { w in
-            let text = (w.label + " " + w.id).lowercased()
+    /// 提取该渠道的总量配额百分比
+    private func resolveTotalPercent(for provider: ProviderWidgetData) -> Double {
+        if let weekly = provider.windows.first(where: {
+            let text = ($0.label + " " + $0.id).lowercased()
             return text.contains("week") || text.contains("周") || text.contains("7d")
+        })?.remainingPercent {
+            return min(100, max(0, weekly))
         }
-
-        if let fiveHour = fiveHourWindow?.remainingPercent,
-           let weekly = weeklyWindow?.remainingPercent {
-            return (min(100, max(0, fiveHour)), min(100, max(0, weekly)))
+        if let rem = provider.remainingPercent {
+            return min(100, max(0, rem))
         }
+        return 100.0
+    }
 
-        // 兜底：如果正好有 2 个窗口，第 1 个作为短期/5h，第 2 个作为周/长期
-        if let first = windows[0].remainingPercent, let second = windows[1].remainingPercent {
-            return (min(100, max(0, first)), min(100, max(0, second)))
+    /// 精简渠道名称（确保在锁屏有限空间下不换行、不截断）
+    private func shortName(for p: ProviderWidgetData) -> String {
+        switch p.provider {
+        case .antigravity: return "Agy"
+        case .workbuddy: return "Buddy"
+        case .geminiCLI: return "Gemini"
+        case .xai: return "Grok"
+        case .openrouter: return "Router"
+        case .deepseek: return "DeepSeek"
+        case .copilot: return "Copilot"
+        case .zcode: return "ZCode"
+        case .minimax: return "MiniMax"
+        case .stepfun: return "Step"
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        case .kimi: return "Kimi"
+        default:
+            let lower = p.displayName.lowercased()
+            if lower.contains("antigravity") { return "Agy" }
+            if lower.contains("workbuddy") { return "Buddy" }
+            if lower.contains("openrouter") { return "Router" }
+            return p.displayName
         }
-
-        return nil
     }
 }

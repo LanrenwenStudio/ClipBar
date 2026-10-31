@@ -13,6 +13,16 @@ struct AccountCard: View {
                     .font(.system(size: 10))
                     .foregroundStyle(AccessDeckTheme.warning)
                     .fixedSize(horizontal: false, vertical: true)
+            } else if row.snapshot.windows.isEmpty {
+                let isFree = (row.snapshot.planType?.lowercased().contains("free") == true)
+                HStack(spacing: 4) {
+                    Image(systemName: isFree ? "checkmark.seal.fill" : "circle.dashed")
+                        .font(.system(size: 9))
+                        .foregroundStyle(isFree ? AccessDeckTheme.success : Color.secondary)
+                    Text(isFree ? L10n.t("免费账号 · 无速率限制", "Free Plan · No rate limit") : L10n.t("无活跃额度窗口", "No active quota window"))
+                        .font(.system(size: 10))
+                        .foregroundStyle(isFree ? Color.primary.opacity(0.85) : Color.secondary)
+                }
             } else {
                 VStack(spacing: 4) {
                     let customHex = model.settings.customColorHex(for: row.account.provider)
@@ -27,6 +37,13 @@ struct AccountCard: View {
                      ?? L10n.t("重置卡：暂不可用", "Reset credits: unavailable"))
                     .font(.system(size: 10))
                     .foregroundStyle(.secondary)
+                if let count = row.snapshot.resetCreditCount, count > 0 {
+                    Text(L10n.t("最近到期：", "Next expiry: ")
+                         + (row.snapshot.resetCreditExpiresAt?.formatted(date: .abbreviated, time: .shortened)
+                            ?? L10n.t("未知", "unknown")))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(10)

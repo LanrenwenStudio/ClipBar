@@ -14,7 +14,7 @@ enum ManagementClientError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .notConfigured:
-            return L10n.t("先填写 CLIProxyAPI 地址和管理密钥。", "Enter the CLIProxyAPI URL and management key first.")
+            return L10n.t("先填写 Magpie 管理地址和网页密钥。", "Enter the Magpie management URL and web key first.")
         case .invalidBaseURL:
             return L10n.t("管理地址无效。", "The management URL is invalid.")
         case let .httpStatus(code, body):

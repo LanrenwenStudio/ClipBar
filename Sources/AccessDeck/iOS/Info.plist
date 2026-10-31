@@ -51,5 +51,7 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>AccessDeck 需要访问本地局域网以连接软路由 Magpie 服务同步订阅额度。</string>
 </dict>
 </plist>

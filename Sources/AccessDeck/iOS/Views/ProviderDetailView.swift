@@ -11,9 +11,6 @@ struct ProviderDetailView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     headerHeroCard
-                    if provider == .codex {
-                        codexSchedulerBanner
-                    }
                     accountsList
                 }
                 .padding(16)
@@ -39,7 +36,7 @@ struct ProviderDetailView: View {
     private var headerHeroCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                ProviderGlyph(provider: provider, size: 24)
+                ProviderGlyph(provider: provider, size: 24, tint: AccessDeckTheme.providerColor(for: provider))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(provider.displayName)
                         .font(.title2.weight(.bold))
@@ -224,9 +221,16 @@ struct ProviderDetailView: View {
                                 .font(.caption)
                                 .foregroundStyle(AccessDeckTheme.warning)
                         } else {
-                            Text(L10n.t("无活跃额度窗口", "No active quota window"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            let isFree = (row.snapshot.planType?.lowercased().contains("free") == true)
+                            HStack(spacing: 5) {
+                                Image(systemName: isFree ? "checkmark.seal.fill" : "circle.dashed")
+                                    .font(.caption2)
+                                    .foregroundStyle(isFree ? AccessDeckTheme.success : Color.secondary)
+                                Text(isFree ? L10n.t("免费账号 · 无速率额度限制", "Free Plan · No rate limits") : L10n.t("无活跃额度窗口", "No active quota window"))
+                                    .font(.caption)
+                                    .foregroundStyle(isFree ? Color.primary.opacity(0.85) : Color.secondary)
+                            }
+                            .padding(.vertical, 2)
                         }
                     } else {
                         ForEach(row.snapshot.windows) { window in
@@ -250,6 +254,13 @@ struct ProviderDetailView: View {
                                 Capsule()
                                     .fill(Color(red: 0.0, green: 0.52, blue: 1.0).opacity(0.12))
                             )
+                            if count > 0 {
+                                Text(L10n.t("最近到期：", "Next expiry: ")
+                                     + (row.snapshot.resetCreditExpiresAt?.formatted(date: .abbreviated, time: .shortened)
+                                        ?? L10n.t("未知", "unknown")))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         } else {
                             Text(L10n.t("重置卡：暂不可用", "Reset credits: unavailable"))
                                 .font(.caption)

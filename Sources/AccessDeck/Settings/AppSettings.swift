@@ -63,11 +63,21 @@ struct AppSettings: Equatable, Sendable, Codable {
     var sortByRemainingQuota: Bool
     var appTheme: AppTheme
 
-    static let defaultBaseURL = "http://192.168.1.3:8317"
+    static let builtinDesktopGatewayKey = "sk-magpie-key-0f8aafe07b340b3ce9a02e4bffcfdf2fc6c7be5d691c519b"
+    static let builtinRouterGatewayKey = "sk-magpie-key-c4dcd616ff2e1a67d8f2babd6f0723dbc57821ee92d95eab"
+    static let builtinRouterWebKey = "450268c0b6a83c83d7aa11346f1b111fb3d8e9bbc12ef7c4"
+
+    static let builtinDesktopMacURL = "http://192.168.1.158:3425"
+    static let builtinDesktopLocalURL = "http://127.0.0.1:3425"
+    static let builtinRouterGatewayURL = "http://192.168.1.3:3425"
+    static let builtinRouterWebURL = "http://192.168.1.3:3430"
+
+    static let defaultBaseURL = "http://192.168.1.158:3425"
+    static let defaultManagementKey = builtinDesktopGatewayKey
 
     static let `default` = AppSettings(
         baseURL: Self.defaultBaseURL,
-        managementKey: "",
+        managementKey: Self.defaultManagementKey,
         refreshSeconds: 300,
         statusItemOrder: [],
         hiddenStatusItemIDs: [],
@@ -112,11 +122,15 @@ struct AppSettings: Equatable, Sendable, Codable {
     }
 
     var isConfigured: Bool {
-        !normalizedBaseURL.isEmpty && !normalizedManagementKey.isEmpty
+        if normalizedBaseURL.isEmpty && normalizedManagementKey.isEmpty {
+            return false
+        }
+        return true
     }
 
     var activeURL: String {
-        normalizedBaseURL
+        let trimmed = normalizedBaseURL
+        return trimmed.isEmpty ? Self.defaultBaseURL : trimmed
     }
 
     var normalizedBaseURL: String {

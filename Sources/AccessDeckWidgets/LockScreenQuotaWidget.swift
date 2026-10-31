@@ -36,23 +36,10 @@ struct LockScreenQuotaView: View {
     private var targetProvider: ProviderWidgetData? {
         let providers = entry.snapshot.providers
         guard !providers.isEmpty else { return nil }
-
-        switch entry.selectedChoice {
-        case .auto:
+        if entry.selectedChoice == .auto {
             return providers.first
-        case .codex:
-            return providers.first(where: { $0.providerRawValue == "codex" })
-        case .claude:
-            return providers.first(where: { $0.providerRawValue == "claude" })
-        case .gemini:
-            return providers.first(where: { $0.providerRawValue == "gemini" })
-        case .antigravity:
-            return providers.first(where: { $0.providerRawValue == "antigravity" })
-        case .grok:
-            return providers.first(where: { $0.providerRawValue == "xai" })
-        case .kimi:
-            return providers.first(where: { $0.providerRawValue == "kimi" })
         }
+        return providers.first(where: { entry.selectedChoice.matches(provider: $0) })
     }
 
     var body: some View {
@@ -94,16 +81,38 @@ struct LockScreenQuotaView: View {
 
 private struct LockScreenCircularView: View {
     let provider: ProviderWidgetData
-    var showResetCredits: Bool = true
+    var showResetCredits: Bool = false
 
     private var percent: Double {
-        min(100, max(0, provider.remainingPercent ?? 0))
+        if let weekly = provider.windows.first(where: {
+            let text = ($0.label + " " + $0.id).lowercased()
+            return text.contains("week") || text.contains("周") || text.contains("7d")
+        })?.remainingPercent {
+            return min(100, max(0, weekly))
+        }
+        return min(100, max(0, provider.remainingPercent ?? 0))
     }
 
-    private var hasFiveHour: Bool {
-        provider.windows.contains { w in
-            let text = (w.label + " " + w.id).lowercased()
-            return text.contains("5h") || text.contains("rate_limit") || text.contains("5小时") || text.contains("five-hour") || text.contains("five hour")
+    private var shortName: String {
+        switch provider.provider {
+        case .antigravity: return "Agy"
+        case .workbuddy: return "Buddy"
+        case .geminiCLI: return "Gemini"
+        case .xai: return "Grok"
+        case .openrouter: return "Router"
+        case .deepseek: return "DeepSeek"
+        case .copilot: return "Copilot"
+        case .zcode: return "ZCode"
+        case .minimax: return "MiniMax"
+        case .stepfun: return "Step"
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        case .kimi: return "Kimi"
+        default:
+            let lower = provider.displayName.lowercased()
+            if lower.contains("antigravity") { return "Agy" }
+            if lower.contains("workbuddy") { return "Buddy" }
+            return provider.displayName
         }
     }
 
@@ -114,240 +123,118 @@ private struct LockScreenCircularView: View {
             VStack(spacing: -1.5) {
                 Text("\(Int(percent.rounded()))")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
-                if showResetCredits, let credits = provider.resetCreditCount, credits > 0 {
-                    ResetCreditPill(count: credits, isAccent: false, fontSize: 6.0, iconSize: 5.0)
-                } else if hasFiveHour {
-                    Text(provider.nearestFiveHourDisplayText ?? "5h")
-                        .font(.system(size: 7, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                }
+                Text(shortName)
+                    .font(.system(size: 7, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.secondary)
             }
         }
         .gaugeStyle(.accessoryCircular)
     }
 }
 
-// MARK: - 2. 矩形小组件 (accessoryRectangular) - 渠道 + 额度 + 双窗口/进度条
+// MARK: - 2. 矩形小组件 (accessoryRectangular) - 纯直角分段矩形只显示总量
 
 private struct LockScreenRectangularView: View {
     let provider: ProviderWidgetData
     let snapshot: AccessDeckWidgetSnapshot
     let entryDate: Date
-    var showResetCredits: Bool = true
+    var showResetCredits: Bool = false
     var style: WidgetProgressBarStyle = .segmented
 
     private var percent: Double {
-        min(100, max(0, provider.remainingPercent ?? 0))
-    }
-
-
-    private var fiveHourWindow: QuotaWindowSummary? {
-        provider.windows.first { w in
-            let text = (w.label + " " + w.id).lowercased()
-            return text.contains("5h") || text.contains("rate_limit") || text.contains("5小时") || text.contains("five-hour") || text.contains("five hour")
+        if let weekly = provider.windows.first(where: {
+            let text = ($0.label + " " + $0.id).lowercased()
+            return text.contains("week") || text.contains("周") || text.contains("7d")
+        })?.remainingPercent {
+            return min(100, max(0, weekly))
         }
-    }
-
-    private var weeklyWindow: QuotaWindowSummary? {
-        provider.windows.first { w in
-            let text = (w.label + " " + w.id).lowercased()
-            return text.contains("week") || text.contains("周") || text.contains("7d") || text.contains("seven-day")
-        }
-    }
-
-    private var splitWindows: (fiveHour: Double, weekly: Double)? {
-        if let fiveHour = fiveHourWindow?.remainingPercent,
-           let weekly = weeklyWindow?.remainingPercent {
-            return (min(100, max(0, fiveHour)), min(100, max(0, weekly)))
-        }
-        // 兜底：若有至少两个窗口，且第1个不是周额度，则取前两个窗口
-        if provider.windows.count >= 2,
-           let first = provider.windows[0].remainingPercent,
-           let second = provider.windows[1].remainingPercent {
-            return (min(100, max(0, first)), min(100, max(0, second)))
-        }
-        return nil
+        return min(100, max(0, provider.remainingPercent ?? 0))
     }
 
     private var freshnessText: String {
         WidgetFormatter.freshnessText(from: snapshot.lastUpdated)
     }
 
+    private var shortName: String {
+        switch provider.provider {
+        case .antigravity: return "Agy"
+        case .workbuddy: return "Buddy"
+        case .geminiCLI: return "Gemini"
+        case .xai: return "Grok"
+        case .openrouter: return "Router"
+        case .deepseek: return "DeepSeek"
+        case .copilot: return "Copilot"
+        case .zcode: return "ZCode"
+        case .minimax: return "MiniMax"
+        case .stepfun: return "Step"
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        case .kimi: return "Kimi"
+        default:
+            let lower = provider.displayName.lowercased()
+            if lower.contains("antigravity") { return "Agy" }
+            if lower.contains("workbuddy") { return "Buddy" }
+            if lower.contains("openrouter") { return "Router" }
+            return provider.displayName
+        }
+    }
+
     var body: some View {
-        if let split = splitWindows {
-            let fiveHour = split.fiveHour
-            let weekly = split.weekly
-            // 双窗口布局：5h 与周额度各有一条独立进度条
-            VStack(alignment: .leading, spacing: 3) {
-                // 顶栏：图标、账号数与刷新时间。
-                HStack(alignment: .center, spacing: 3) {
-                    ProviderGlyph(provider: provider.provider, size: 10.5)
-                    if showResetCredits, provider.provider == .codex, let credits = provider.resetCreditCount, credits > 0 {
-                        ResetCreditPill(count: credits, isAccent: false, fontSize: 7.5, iconSize: 6.5)
-                    } else {
-                        Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
-                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                    }
+        VStack(alignment: .leading, spacing: 3) {
+            // 顶行：图标、精简名称、账号数、刷新时间与主百分比
+            HStack(alignment: .center, spacing: 3) {
+                ProviderGlyph(provider: provider.provider, size: 11)
+                Text(shortName)
+                    .font(.system(size: 11.0, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.65)
 
-                    if provider.accountCount > 0 {
-                        Text("\(provider.healthyCount)/\(provider.accountCount)")
-                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer(minLength: 2)
-
-                    HStack(spacing: 2) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 6.5, weight: .semibold))
-                        Text(freshnessText)
-                            .font(.system(size: 8.0, weight: .medium, design: .rounded))
-                    }
-                    .foregroundStyle(.secondary)
-                }
-
-                // 第 1 栏：5 小时额度条
-                HStack(spacing: 4) {
-                    Text(provider.nearestFiveHourDisplayText ?? "5h")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
+                if provider.accountCount > 0 {
+                    Text("\(provider.healthyCount)/\(provider.accountCount)")
+                        .font(.system(size: 8.5, weight: .semibold, design: .rounded))
                         .foregroundStyle(.secondary)
-                        .frame(width: 14, alignment: .leading)
-
-                    if style == .continuous {
-                        ContinuousPillBar(
-                            percent: min(100, max(0, fiveHour)),
-                            barHeight: 5.5,
-                            cornerRadius: 2.0,
-                            activeColor: .primary,
-                            inactiveColor: Color.primary.opacity(0.18)
-                        )
-                    } else {
-                        SegmentedPillBar(
-                            percent: min(100, max(0, fiveHour)),
-                            totalSegments: 24,
-                            barHeight: 5.5,
-                            segmentSpacing: 1.0,
-                            cornerRadius: 0.5,
-                            activeColor: .primary,
-                            inactiveColor: Color.primary.opacity(0.18)
-                        )
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Text("\(Int(fiveHour.rounded()))%")
-                        .font(.system(size: 9.0, weight: .bold, design: .rounded))
-                        .monospacedDigit()
                 }
 
-                // 第 2 栏：周额度条
-                HStack(spacing: 4) {
-                    Text("周")
-                        .font(.system(size: 8.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 14, alignment: .leading)
+                Spacer(minLength: 2)
 
-                    if style == .continuous {
-                        ContinuousPillBar(
-                            percent: min(100, max(0, weekly)),
-                            barHeight: 5.5,
-                            cornerRadius: 2.0,
-                            activeColor: .primary,
-                            inactiveColor: Color.primary.opacity(0.18)
-                        )
-                    } else {
-                        SegmentedPillBar(
-                            percent: min(100, max(0, weekly)),
-                            totalSegments: 24,
-                            barHeight: 5.5,
-                            segmentSpacing: 1.0,
-                            cornerRadius: 0.5,
-                            activeColor: .primary,
-                            inactiveColor: Color.primary.opacity(0.18)
-                        )
-                    }
-
-                    Spacer(minLength: 0)
-
-                    Text("\(Int(weekly.rounded()))%")
-                        .font(.system(size: 9.0, weight: .bold, design: .rounded))
-                        .monospacedDigit()
+                HStack(spacing: 2) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 7, weight: .semibold))
+                    Text(freshnessText)
+                        .font(.system(size: 8.5, weight: .medium, design: .rounded))
                 }
+                .foregroundStyle(.secondary)
 
+                Spacer(minLength: 2)
+
+                Text("\(Int(percent.rounded()))%")
+                    .font(.system(size: 12.5, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
             }
-        } else {
-            // 单窗口布局：单一大进度条 + 重置倒计时
-            VStack(alignment: .leading, spacing: 2) {
-                // 顶行：图标、账号数、刷新时间与主百分比。
-                HStack(alignment: .center, spacing: 3) {
-                    ProviderGlyph(provider: provider.provider, size: 11)
-                    if showResetCredits, provider.provider == .codex, let credits = provider.resetCreditCount, credits > 0 {
-                        ResetCreditPill(count: credits, isAccent: false, fontSize: 7.5, iconSize: 6.5)
-                    } else {
-                        Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
-                            .font(.system(size: 10.5, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                    }
 
-                    if provider.accountCount > 0 {
-                        Text("\(provider.healthyCount)/\(provider.accountCount)")
-                            .font(.system(size: 8.5, weight: .semibold, design: .rounded))
-                            .foregroundStyle(.secondary)
-                    }
+            // 中间行：纤细直角矩形分段进度条（严格使用分段条，不要实线）
+            SegmentedPillBar(
+                percent: percent,
+                totalSegments: 32,
+                barHeight: 7.5,
+                segmentSpacing: 1.6,
+                cornerRadius: 0,
+                activeColor: .primary,
+                inactiveColor: Color.primary.opacity(0.18)
+            )
 
-                    Spacer(minLength: 2)
+            // 底行：重置时间
+            HStack(spacing: 4) {
+                Spacer(minLength: 0)
 
-                    HStack(spacing: 2) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 7, weight: .semibold))
-                        Text(freshnessText)
-                            .font(.system(size: 8.5, weight: .medium, design: .rounded))
+                if let reset = provider.nearestResetText, reset != "--" {
+                    HStack(spacing: 1.5) {
+                        Image(systemName: "clock")
+                            .font(.system(size: 7.5))
+                        Text(reset)
+                            .font(.system(size: 9.0, design: .rounded))
                     }
                     .foregroundStyle(.secondary)
-
-                    Spacer(minLength: 2)
-
-                    Text("\(Int(percent.rounded()))%")
-                        .font(.system(size: 12.5, weight: .heavy, design: .rounded))
-                }
-
-                // 中间行：分段胶囊进度条（细密条纹风格）
-                if style == .continuous {
-                    ContinuousPillBar(
-                        percent: percent,
-                        barHeight: 5.5,
-                        cornerRadius: 2.0,
-                        activeColor: .primary,
-                        inactiveColor: Color.primary.opacity(0.18)
-                    )
-                } else {
-                    SegmentedPillBar(
-                        percent: percent,
-                        totalSegments: 28,
-                        barHeight: 5.5,
-                        segmentSpacing: 1.1,
-                        cornerRadius: 0.5,
-                        activeColor: .primary,
-                        inactiveColor: Color.primary.opacity(0.18)
-                    )
-                }
-
-                // 底行：重置时间
-                HStack(spacing: 4) {
-                    Spacer(minLength: 0)
-
-                    if let reset = provider.nearestFiveHourResetText ?? provider.nearestResetText, reset != "--" {
-                        HStack(spacing: 1.5) {
-                            Image(systemName: "clock")
-                                .font(.system(size: 7.5))
-                            Text(reset)
-                                .font(.system(size: 9.0, design: .rounded))
-                        }
-                        .foregroundStyle(.secondary)
-                    }
                 }
             }
         }
@@ -358,34 +245,34 @@ private struct LockScreenRectangularView: View {
 
 private struct LockScreenInlineView: View {
     let provider: ProviderWidgetData
-    var showResetCredits: Bool = true
+    var showResetCredits: Bool = false
 
     private var percent: Double {
-        min(100, max(0, provider.remainingPercent ?? 0))
+        if let weekly = provider.windows.first(where: {
+            let text = ($0.label + " " + $0.id).lowercased()
+            return text.contains("week") || text.contains("周") || text.contains("7d")
+        })?.remainingPercent {
+            return min(100, max(0, weekly))
+        }
+        return min(100, max(0, provider.remainingPercent ?? 0))
     }
 
-
-    private var hasFiveHour: Bool {
-        provider.windows.contains { w in
-            let text = (w.label + " " + w.id).lowercased()
-            return text.contains("5h") || text.contains("rate_limit") || text.contains("5小时") || text.contains("five-hour") || text.contains("five hour")
+    private var shortName: String {
+        switch provider.provider {
+        case .antigravity: return "Agy"
+        case .workbuddy: return "Buddy"
+        case .geminiCLI: return "Gemini"
+        case .xai: return "Grok"
+        default:
+            return provider.widgetTitle
         }
     }
 
     var body: some View {
         HStack(spacing: 3) {
             Image(systemName: "gauge.with.needle")
-            let name = provider.provider == .antigravity ? "Agy" : provider.displayName
-            if showResetCredits, let credits = provider.resetCreditCount, credits > 0 {
-                Text("💳\(credits) \(Int(percent.rounded()))% \(provider.nearestFiveHourDisplayText ?? "5h")")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-            } else if hasFiveHour {
-                Text("\(name) \(Int(percent.rounded()))% \(provider.nearestFiveHourDisplayText ?? "5h")")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-            } else {
-                Text("\(name) \(Int(percent.rounded()))%")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-            }
+            Text("\(shortName): \(Int(percent.rounded()))%")
+                .font(.system(size: 10, weight: .medium, design: .rounded))
         }
     }
 }

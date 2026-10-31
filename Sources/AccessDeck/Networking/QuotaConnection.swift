@@ -40,8 +40,7 @@ struct QuotaConnectionFactory: Sendable {
     }
 
     func make(settings: AppSettings) -> any QuotaConnection {
-        let client = ManagementClient(settings: settings, transport: transport)
-        return DirectQuotaConnection(service: QuotaService(client: client))
+        MagpieQuotaConnection(settings: settings, transport: transport)
     }
 }
 

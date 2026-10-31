@@ -33,14 +33,50 @@ enum QuotaParser {
             planType: plan,
             windows: windows,
             error: windows.isEmpty ? "empty quota payload" : nil,
-            resetCreditCount: resetCreditCount
+            resetCreditCount: resetCreditCount,
+            resetCreditExpiresAt: codexResetCreditExpiresAt(object)
         )
     }
 
-    static func codexResetCreditCount(_ object: [String: Any]) -> Int? {
+    static func codexResetCreditCount(_ object: [String: Any], now: Date = Date()) -> Int? {
         guard let count = JSONValue.firstDouble(object, paths: ["rate_limit_reset_credits.available_count", "available_count"]),
               count >= 0, count < Double(Int.max), count.rounded(.towardZero) == count else { return nil }
-        return Int(count)
+        let summary = object["rate_limit_reset_credits"] as? [String: Any]
+        let credits = (summary?["credits"] as? [[String: Any]]) ?? (object["credits"] as? [[String: Any]]) ?? []
+        let expired = credits.filter { credit in
+            guard (credit["status"] as? String)?.lowercased() == "available",
+                  let raw = credit["expires_at"] as? String,
+                  let expiry = resetCreditExpiry(raw) else { return false }
+            return expiry <= now
+        }.count
+        return max(0, Int(count) - expired)
+    }
+
+    private static func resetCreditExpiry(_ raw: String) -> Date? {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return iso.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+    }
+
+    static func codexResetCreditExpiresAt(_ object: [String: Any], now: Date = Date()) -> Date? {
+        guard codexResetCreditCount(object, now: now) != 0 else { return nil }
+        let summary = object["rate_limit_reset_credits"] as? [String: Any]
+        guard let credits = (summary?["credits"] as? [[String: Any]]) ?? (object["credits"] as? [[String: Any]]) else {
+            return nil
+        }
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let wholeSeconds = ISO8601DateFormatter()
+        var earliest: Date?
+        for credit in credits {
+            guard let status = credit["status"] as? String,
+                  status.caseInsensitiveCompare("available") == .orderedSame,
+                  let raw = credit["expires_at"] as? String,
+                  let expiry = iso.date(from: raw) ?? wholeSeconds.date(from: raw),
+                  expiry > now else { continue }
+            earliest = min(earliest ?? expiry, expiry)
+        }
+        return earliest
     }
 
     static func parseClaude(_ object: [String: Any]) -> QuotaSnapshot {
@@ -501,7 +537,7 @@ enum QuotaParser {
         case "ultra", "antigravity-ultra": return "Ultra"
         case "supergrok": return "SuperGrok"
         case "supergrok-heavy": return "SuperGrok Heavy"
-        case "free", "free-tier", "legacy", "legacy-tier": return "Free"
+        case "free", "free-tier", "free-plan", "legacy", "legacy-tier": return "Free"
         case "standard": return "Standard"
         default:
             return raw.replacingOccurrences(of: "_", with: " ").localizedCapitalized

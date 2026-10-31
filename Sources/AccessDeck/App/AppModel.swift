@@ -20,6 +20,9 @@ final class AppModel {
 
     private func applyCloudSettings(_ cloudSettings: AppSettings) {
         var mergedSettings = cloudSettings
+        if mergedSettings.baseURL.contains(":8317") {
+            mergedSettings.baseURL = mergedSettings.baseURL.replacingOccurrences(of: ":8317", with: ":3430")
+        }
         mergedSettings.managementKey = settings.managementKey
         settings = mergedSettings
         restartPolling()
@@ -70,9 +73,6 @@ final class AppModel {
         self.launchAtLoginError = nil
         if startPolling {
             start()
-        }
-        Task { [weak self] in
-            await self?.refreshCodexScheduler()
         }
     }
 
@@ -307,7 +307,7 @@ final class AppModel {
               source != target else { return }
         var order = orderedPreferenceProviders
         guard let fromIndex = order.firstIndex(of: source),
-              let toIndex = order.firstIndex(of: target) else { return }
+              order.contains(target) else { return }
         order.remove(at: fromIndex)
         let insertIndex = order.firstIndex(of: target) ?? order.endIndex
         order.insert(source, at: insertIndex)
@@ -399,9 +399,6 @@ final class AppModel {
             }
         }
         await refreshTask?.value
-        Task { [weak self] in
-            await self?.refreshCodexScheduler()
-        }
     }
 
     func refreshCodexScheduler() async {

@@ -45,6 +45,96 @@ struct QuotaParserTests {
 
         let oldSnapshot = Data(#"{"windows":[]}"#.utf8)
         #expect(try JSONDecoder().decode(QuotaSnapshot.self, from: oldSnapshot).resetCreditCount == nil)
+        #expect(try JSONDecoder().decode(QuotaSnapshot.self, from: oldSnapshot).resetCreditExpiresAt == nil)
+    }
+
+    @Test("Codex reset expiry selects only the earliest known available credit")
+    func parseCodexResetCreditExpiry() throws {
+        let snapshot = QuotaParser.parseCodex([
+            "rate_limit_reset_credits": [
+                "available_count": 3,
+                "credits": [
+                    ["status": "available", "expires_at": "2099-01-01T00:00:05Z"],
+                    ["status": "AVAILABLE", "expires_at": "2099-01-01T00:00:02Z"],
+                    ["status": "available", "expires_at": NSNull()],
+                    ["status": "redeemed", "expires_at": "1970-01-01T00:00:01Z"],
+                    ["status": "expired", "expires_at": "1970-01-01T00:00:00Z"],
+                    ["status": "future_status", "expires_at": "1970-01-01T00:00:00Z"],
+                    ["expires_at": "1970-01-01T00:00:00Z"]
+                ]
+            ]
+        ])
+        #expect(snapshot.resetCreditCount == 3)
+        #expect(snapshot.resetCreditExpiresAt == ISO8601DateFormatter().date(from: "2099-01-01T00:00:02Z"))
+    }
+
+    @Test("Codex reset expiry parses fractional seconds and timezone offsets")
+    func parseCodexResetCreditFractionalExpiry() throws {
+        let expiry = try #require(QuotaParser.codexResetCreditExpiresAt([
+            "available_count": 2,
+            "credits": [
+                ["status": "available", "expires_at": "1970-01-01T00:00:01.124Z"],
+                ["status": "available", "expires_at": "1970-01-01T01:00:01.123456+01:00"]
+            ]
+        ], now: Date(timeIntervalSince1970: 0)))
+        #expect(abs(expiry.timeIntervalSince1970 - 1.123456) < 0.001)
+
+        // Sanitized timestamps from successful live credit-detail responses.
+        let liveExpiry = try #require(QuotaParser.codexResetCreditExpiresAt([
+            "available_count": 2,
+            "credits": [
+                ["status": "available", "expires_at": "2026-11-06T23:16:46.554609Z"],
+                ["status": "available", "expires_at": "2026-10-29T17:24:50.904333Z"]
+            ]
+        ], now: Date(timeIntervalSince1970: 0)))
+        let wholeSeconds = try #require(ISO8601DateFormatter().date(from: "2026-10-29T17:24:50Z"))
+        #expect(abs(liveExpiry.timeIntervalSince(wholeSeconds) - 0.904333) < 0.001)
+    }
+
+    @Test("Codex reset expiry remains unknown for absent or invalid credit expiry")
+    func parseCodexUnknownResetCreditExpiry() {
+        #expect(QuotaParser.parseCodex(["rate_limit_reset_credits": ["available_count": 2]]).resetCreditExpiresAt == nil)
+        #expect(QuotaParser.codexResetCreditExpiresAt([:]) == nil)
+        #expect(QuotaParser.codexResetCreditExpiresAt(["available_count": 2, "credits": []]) == nil)
+        #expect(QuotaParser.codexResetCreditExpiresAt([
+            "available_count": 4,
+            "expires_at": "1970-01-01T00:00:01Z",
+            "credits": [
+                ["status": "available", "expires_at": NSNull()],
+                ["status": "available", "expires_at": "not a date"],
+                ["status": "available", "expires_at": 1_800_000_000],
+                ["status": "available", "granted_at": "1970-01-01T00:00:01Z", "reset_at": 1_800_000_000]
+            ]
+        ]) == nil)
+    }
+
+    @Test("Codex zero count suppresses expiry while missing detail count preserves known expiry")
+    func parseCodexResetCreditExpiryCountBoundaries() {
+        let credits = [["status": "available", "expires_at": "1970-01-01T00:00:01Z"]]
+        #expect(QuotaParser.codexResetCreditExpiresAt(["available_count": 0, "credits": credits]) == nil)
+        #expect(QuotaParser.codexResetCreditCount(["credits": credits]) == nil)
+        #expect(QuotaParser.codexResetCreditExpiresAt(["credits": credits], now: Date(timeIntervalSince1970: 0)) == Date(timeIntervalSince1970: 1))
+    }
+
+    @Test("Expired credits are excluded without hiding remaining valid credits")
+    func excludesExpiredCredits() {
+        let payload: [String: Any] = ["available_count": 2, "credits": [
+            ["status": "available", "expires_at": "1970-01-01T00:00:01Z"],
+            ["status": "available", "expires_at": "2099-01-01T00:00:00Z"]
+        ]]
+        #expect(QuotaParser.codexResetCreditCount(payload) == 1)
+        #expect(QuotaParser.codexResetCreditExpiresAt(payload) == ISO8601DateFormatter().date(from: "2099-01-01T00:00:00Z"))
+        #expect(QuotaParser.codexResetCreditCount(payload, now: Date.distantFuture) == 0)
+        #expect(QuotaParser.codexResetCreditExpiresAt(payload, now: Date.distantFuture) == nil)
+    }
+
+    @Test("Quota snapshots retain reset expiry through Codable")
+    func resetCreditExpiryRoundTrip() throws {
+        let expiry = Date(timeIntervalSince1970: 1_800_000_000.5)
+        let snapshot = QuotaSnapshot(planType: "plus", windows: [], error: nil, resetCreditCount: 2, resetCreditExpiresAt: expiry)
+        let restored = try JSONDecoder().decode(QuotaSnapshot.self, from: JSONEncoder().encode(snapshot))
+        #expect(restored.resetCreditCount == 2)
+        #expect(restored.resetCreditExpiresAt == expiry)
     }
 
     @Test("Claude OAuth usage maps utilization to remaining percent")

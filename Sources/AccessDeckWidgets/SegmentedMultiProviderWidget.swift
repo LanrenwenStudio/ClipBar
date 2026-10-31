@@ -4,17 +4,20 @@ import WidgetKit
 import UIKit
 #endif
 
-/// 分段胶囊风格多渠道概览小组件视图（支持 1 / 2 / 3 渠道动态自适应）
+/// 分段胶囊风格多渠道概览小组件视图（支持 1 / 2 / 3 / 4 渠道动态自适应）
 struct SegmentedMultiProviderWidgetView: View {
     let entry: MultiProviderEntry
-    let maxCount: Int
+    var maxCount: Int = 4
 
     private var displayProviders: [ProviderWidgetData] {
-        let list = entry.snapshot.providers.isEmpty
-            ? entry.snapshot.topThreeProviders
+        let all = entry.snapshot.providers.isEmpty
+            ? AccessDeckWidgetSnapshot.preview.providers
             : entry.snapshot.providers
-
-        return Array(list.prefix(maxCount))
+        return resolveDisplayProviders(
+            allProviders: all,
+            choices: entry.selectedProviders,
+            targetCount: max(1, min(4, entry.channelCount))
+        )
     }
 
     private var count: Int {
@@ -30,7 +33,8 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 15.0
         case 2: return 13.5
-        default: return 12.5
+        case 3: return 12.5
+        default: return 10.5
         }
     }
 
@@ -38,7 +42,8 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 13.5
         case 2: return 12.0
-        default: return 11.5
+        case 3: return 11.5
+        default: return 9.5
         }
     }
 
@@ -46,7 +51,8 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 11.5
         case 2: return 10.5
-        default: return 9.5
+        case 3: return 9.5
+        default: return 8.5
         }
     }
 
@@ -54,43 +60,39 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 16.0
         case 2: return 12.0
-        default: return 9.5
+        case 3: return 9.5
+        default: return 7.5
         }
     }
 
     private var segmentCount: Int {
-        switch count {
-        case 1: return 32
-        case 2: return 28
-        default: return 26
-        }
+        // 纤细高瘦矩形竖条（32段均匀分布）
+        return 32
     }
 
     private var segmentSpacing: CGFloat {
-        switch count {
-        case 1: return 2.2
-        case 2: return 2.0
-        default: return 2.0
-        }
+        return 1.8
     }
 
     private var cornerRadius: CGFloat {
-        return 1.0
+        return 0
     }
 
     private var rowSpacing: CGFloat {
         switch count {
         case 1: return 0
-        case 2: return 10.0
-        default: return 6.5
+        case 2: return 8.0
+        case 3: return 5.0
+        default: return 2.0
         }
     }
 
     private var providerInnerSpacing: CGFloat {
         switch count {
-        case 1: return 4.0
-        case 2: return 3.0
-        default: return 2.0
+        case 1: return 4.5
+        case 2: return 3.2
+        case 3: return 2.2
+        default: return 1.6
         }
     }
 
@@ -98,7 +100,8 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 9.0
         case 2: return 8.0
-        default: return 7.5
+        case 3: return 7.5
+        default: return 6.8
         }
     }
 
@@ -106,7 +109,8 @@ struct SegmentedMultiProviderWidgetView: View {
         switch count {
         case 1: return 8.0
         case 2: return 7.0
-        default: return 6.5
+        case 3: return 6.5
+        default: return 6.0
         }
     }
 
@@ -151,14 +155,12 @@ struct SegmentedMultiProviderWidgetView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 15)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
+        .padding(.horizontal, count >= 4 ? 13 : 15)
+        .padding(.top, count >= 4 ? 8 : 10)
+        .padding(.bottom, count >= 4 ? 8 : 10)
     }
 
     private func providerRow(_ p: ProviderWidgetData) -> some View {
-        let percent = min(100, max(0, p.remainingPercent ?? 0))
-        let rowColor = AccessDeckTheme.widgetBarColor(for: p.provider, remaining: percent)
         let splitWindows = splitQuotaWindows(for: p)
         let reset = WidgetFormatter.formatResetText(p.nearestResetText ?? p.windows.first?.resetText)
 
@@ -169,7 +171,7 @@ struct SegmentedMultiProviderWidgetView: View {
                     .frame(width: glyphSize, height: glyphSize)
 
                 if entry.showResetCredits, p.provider == .codex, let credits = p.resetCreditCount, credits > 0 {
-                    ResetCreditPill(count: credits, isAccent: true, fontSize: 8.5, iconSize: 7.0)
+                    ResetCreditPill(count: credits, expiresAt: p.resetCreditExpiresAt, isAccent: true, fontSize: 8.5, iconSize: 7.0)
                 } else {
                     Text(p.provider == .antigravity ? "Agy" : p.displayName)
                         .font(.system(size: titleFontSize - 0.5, weight: .semibold, design: .rounded))
@@ -225,21 +227,31 @@ struct SegmentedMultiProviderWidgetView: View {
                     .fixedSize(horizontal: true, vertical: false)
                     .layoutPriority(2)
                 } else {
-                    Text("\(Int(percent.rounded()))%")
-                        .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.primary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .layoutPriority(1)
+                    if let rem = p.remainingPercent {
+                        Text("\(Int(min(100, max(0, rem)).rounded()))%")
+                            .font(.system(size: percentFontSize, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .layoutPriority(1)
+                    } else {
+                        Text("免费")
+                            .font(.system(size: max(8.0, percentFontSize - 0.5), weight: .bold, design: .rounded))
+                            .foregroundStyle(AccessDeckTheme.success)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                    }
                 }
             }
 
             // 进度条：统一采用单渠道同款完整的整条分段条（与头部周额度呼应，更舒展更具统一感）
-            let mainPercent = splitWindows?.weekly.remainingPercent ?? percent
-            let barColor = AccessDeckTheme.widgetBarColor(for: p.provider, remaining: mainPercent)
+            let mainPercent = splitWindows?.weekly.remainingPercent ?? (p.remainingPercent ?? 100)
+            let barColor = p.remainingPercent != nil
+                ? AccessDeckTheme.widgetBarColor(for: p.provider, remaining: mainPercent)
+                : AccessDeckTheme.success
 
             SegmentedPillBar(
-                percent: min(100, max(0, mainPercent ?? 0)),
+                percent: min(100, max(0, mainPercent)),
                 totalSegments: segmentCount,
                 barHeight: barHeight,
                 segmentSpacing: segmentSpacing,
@@ -410,11 +422,11 @@ struct SegmentedMultiProviderWidget: Widget {
             intent: MultiProviderIntent.self,
             provider: MultiProviderTimelineProvider()
         ) { entry in
-            SegmentedMultiProviderWidgetView(entry: entry, maxCount: 3)
+            SegmentedMultiProviderWidgetView(entry: entry, maxCount: entry.channelCount)
                 .containerBackground(Color(uiColor: .systemBackground), for: .widget)
         }
         .configurationDisplayName("多渠道胶囊概览")
-        .description("采用分段微胶囊视觉设计，清晰展示最多 3 个可用 AI 渠道的额度与健康状态。")
+        .description("采用分段微胶囊视觉设计，支持自选 1~4 个 AI 渠道的额度与健康状态。")
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

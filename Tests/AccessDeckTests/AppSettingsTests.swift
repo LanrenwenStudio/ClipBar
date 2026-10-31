@@ -16,9 +16,9 @@ struct AppSettingsTests {
         #expect(AppSettings.nearestRefreshInterval(to: 1000) == 900)
     }
 
-    @Test("Direct CLIProxyAPI URL defaults to the LAN management endpoint")
-    func directURLDefaultsToCPA() {
-        #expect(AppSettings.default.baseURL == "http://192.168.1.3:8317")
+    @Test("Direct Magpie URL defaults to desktop Mac gateway endpoint")
+    func directURLDefaultsToMagpie() {
+        #expect(AppSettings.default.baseURL == "http://192.168.1.158:3425")
     }
 
     @Test("Status quota window defaults to 5h")

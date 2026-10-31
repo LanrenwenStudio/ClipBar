@@ -121,7 +121,7 @@ struct DashboardView: View {
             MetricBox(
                 title: L10n.t("最低剩余额度", "Lowest Quota"),
                 value: lowestQuotaText,
-                subtitle: L10n.t("5h / 周额度最小窗口", "5h / weekly window"),
+                subtitle: L10n.t("所有渠道活跃窗口", "All active windows"),
                 accentColor: lowestQuotaColor
             )
 
@@ -184,7 +184,7 @@ struct DashboardView: View {
                 } else if model.groupedAccounts.isEmpty {
                     UnavailableStateView(
                         title: L10n.t("还没有渠道 Token", "No Channel Tokens"),
-                        detail: L10n.t("添加至少一个渠道 Token 后，这里会显示 5 小时和周额度。", "Add at least one provider token to see 5-hour and weekly quotas here."),
+                        detail: L10n.t("添加至少一个渠道 Token 后，这里会显示各渠道实时额度与健康状态。", "Add at least one provider token to see real-time quotas and health here."),
                         systemImage: "key.slash"
                     )
                 } else {
@@ -310,9 +310,9 @@ struct DashboardView: View {
                 .padding(.top, 16)
 
             VStack(spacing: 6) {
-                Text(L10n.t("连接到 CLIProxyAPI", "Connect to CLIProxyAPI"))
+                Text(L10n.t("连接到 Magpie", "Connect to Magpie"))
                     .font(.title2.weight(.bold))
-                Text(L10n.t("输入你本机的 CLIProxyAPI 服务地址与管理密钥以同步各订阅账号额度。", "Enter your CLIProxyAPI management URL and secret key to track quotas."))
+                Text(L10n.t("输入 Magpie 管理地址与网页密钥以同步订阅账号额度。", "Enter your Magpie management URL and web key to track quotas."))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -375,7 +375,7 @@ struct DashboardView: View {
         guard model.settings.isConfigured else {
             return L10n.t("尚未配置", "Not configured")
         }
-        return L10n.t("CLIProxyAPI 直连", "Direct CLIProxyAPI")
+        return L10n.t("Magpie 直连", "Direct Magpie")
     }
 
     private var lowestQuotaText: String {
@@ -422,6 +422,13 @@ private struct MetricBox: View {
     }
 }
 
+private struct QuotaMetricItem: Identifiable {
+    let id: String
+    let label: String
+    let remaining: Double?
+    let detail: String?
+}
+
 private struct ProviderGridCard: View {
     @Environment(AppModel.self) private var model
     let provider: QuotaProvider
@@ -430,34 +437,52 @@ private struct ProviderGridCard: View {
     var body: some View {
         let isHidden = model.isProviderHidden(provider)
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 6) {
-                ProviderGlyph(provider: provider, size: 16)
-                if let credits = resetCreditCount, credits > 0 {
-                    ResetCreditPill(count: credits, isAccent: true, fontSize: 11, iconSize: 9.5)
-                } else {
-                    Text(provider.displayName)
-                        .font(.headline)
-                        .lineLimit(1)
+            HStack(alignment: .center, spacing: 5) {
+                ProviderGlyph(provider: provider, size: 14.5, tint: AccessDeckTheme.providerColor(for: provider))
+                    .frame(width: 14.5, height: 14.5)
+                Text(provider == .antigravity ? "Agy" : provider.displayName)
+                    .font(.system(size: 13.5, weight: .bold, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                if isFreePlanProvider && quotaItems.isEmpty {
+                    Text(L10n.t("免费", "Free"))
+                        .font(.system(size: 9.0, weight: .semibold))
+                        .foregroundStyle(AccessDeckTheme.success)
+                        .padding(.horizontal, 4.5)
+                        .padding(.vertical, 1.2)
+                        .background(AccessDeckTheme.success.opacity(0.12), in: Capsule())
                 }
                 if isHidden {
                     Image(systemName: "eye.slash")
                         .font(.caption2)
                         .foregroundStyle(AccessDeckTheme.warning)
                 }
-                Spacer()
+                Spacer(minLength: 2)
                 Text("\(accounts.count)")
-                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .font(.caption2.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1.5)
                     .background(Color.primary.opacity(0.06), in: Capsule())
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                quotaRow(label: L10n.t("5 小时", "5h"), remaining: fiveHourRemaining)
-                quotaRow(label: L10n.t("周额度", "Weekly"), remaining: weeklyRemaining)
+            if !quotaItems.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(quotaItems) { item in
+                        quotaRow(label: item.label, remaining: item.remaining, detail: item.detail)
+                    }
+                }
+            } else if isFreePlanProvider {
+                freePlanStatusView
+            } else if let error = accounts.compactMap(\.snapshot.error).first {
+                errorStatusView(error: error)
+            } else {
+                emptyStatusView
             }
+
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, minHeight: 132, alignment: .top)
         .padding(14)
         .background(Color(uiColor: .secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -468,9 +493,223 @@ private struct ProviderGridCard: View {
         }
     }
 
-    private var resetCreditCount: Int? {
-        guard provider == .codex else { return nil }
-        return ProviderWidgetData.pooledResetCreditCount(in: accounts, settings: model.settings)
+    private var quotaItems: [QuotaMetricItem] {
+        var items: [QuotaMetricItem] = []
+
+        if let fiveHour = fiveHourRemaining {
+            items.append(QuotaMetricItem(
+                id: "5h",
+                label: L10n.t("5 小时", "5h"),
+                remaining: fiveHour,
+                detail: nil
+            ))
+        }
+
+        if let weekly = weeklyRemaining {
+            items.append(QuotaMetricItem(
+                id: "7d",
+                label: L10n.t("周额度", "Weekly"),
+                remaining: weekly,
+                detail: nil
+            ))
+        }
+
+        if items.count < 2 {
+            let customItems = extractCustomQuotaItems()
+            for custom in customItems {
+                if items.count < 2 && !items.contains(where: { $0.id == custom.id }) {
+                    items.append(custom)
+                }
+            }
+        }
+
+        return items
+    }
+
+    private func extractCustomQuotaItems() -> [QuotaMetricItem] {
+        let enabled = accounts.filter { !model.isAccountDisabled($0) }
+        let activeAccounts = enabled.isEmpty ? accounts : enabled
+        let allWindows = activeAccounts.flatMap(\.snapshot.windows)
+
+        // 1. Antigravity (Agy) 专属精简：分别显示 Argon 和 Gemini
+        if provider == .antigravity {
+            var argonWindows: [QuotaWindow] = []
+            var geminiWindows: [QuotaWindow] = []
+
+            for window in allWindows {
+                let combined = (window.label + " " + window.id).lowercased()
+                if combined.contains("high") || (combined.contains("argon") && !combined.contains("low")) {
+                    argonWindows.append(window)
+                } else if combined.contains("low") || combined.contains("gemini") {
+                    geminiWindows.append(window)
+                }
+            }
+
+            if argonWindows.isEmpty && geminiWindows.isEmpty && allWindows.count >= 2 {
+                argonWindows.append(allWindows[0])
+                geminiWindows.append(allWindows[1])
+            } else if argonWindows.isEmpty && geminiWindows.isEmpty, let first = allWindows.first {
+                argonWindows.append(first)
+            }
+
+            var agyItems: [QuotaMetricItem] = []
+            if !argonWindows.isEmpty {
+                let percents = argonWindows.compactMap(\.remainingPercent)
+                let avg = percents.isEmpty ? nil : (percents.reduce(0, +) / Double(percents.count))
+                agyItems.append(QuotaMetricItem(
+                    id: "agy_argon",
+                    label: "Argon",
+                    remaining: avg,
+                    detail: nil
+                ))
+            }
+            if !geminiWindows.isEmpty {
+                let percents = geminiWindows.compactMap(\.remainingPercent)
+                let avg = percents.isEmpty ? nil : (percents.reduce(0, +) / Double(percents.count))
+                agyItems.append(QuotaMetricItem(
+                    id: "agy_gemini",
+                    label: "Gemini",
+                    remaining: avg,
+                    detail: nil
+                ))
+            }
+            if !agyItems.isEmpty {
+                return agyItems
+            }
+        }
+
+        var seenKeys = Set<String>()
+        var items: [QuotaMetricItem] = []
+
+        for window in allWindows {
+            let lowerID = window.id.lowercased()
+            if ["5h", "five-hour", "5-hour", "7d", "week", "weekly", "seven-day"].contains(lowerID) {
+                continue
+            }
+
+            let baseKey: String
+            let displayLabel: String
+            if lowerID.contains("credit") || lowerID.contains("积分") {
+                baseKey = "credits"
+                displayLabel = L10n.t("积分", "Credits")
+            } else if lowerID.contains("token") || lowerID.contains("free model") {
+                baseKey = "tokens"
+                displayLabel = "Token"
+            } else if provider == .zcode {
+                let rawName = window.label.components(separatedBy: " (").first ?? window.label
+                let lowerName = rawName.lowercased()
+                if lowerName.contains("flash") {
+                    baseKey = "zcode_flash"
+                    displayLabel = "Flash"
+                } else if lowerName.contains("5.3") || lowerName.contains("glm") {
+                    baseKey = "zcode_53"
+                    displayLabel = "GLM-5.3"
+                } else {
+                    baseKey = window.id
+                    displayLabel = rawName
+                }
+            } else {
+                baseKey = window.id.components(separatedBy: ":").first ?? window.id
+                displayLabel = window.label.components(separatedBy: " (").first ?? window.label
+            }
+
+            guard seenKeys.insert(baseKey).inserted else { continue }
+
+            let matchingWindows = activeAccounts.compactMap { acct in
+                acct.snapshot.windows.first { w in
+                    let wLower = w.id.lowercased()
+                    let wLabel = w.label.lowercased()
+                    if baseKey == "credits" { return wLower.contains("credit") || wLower.contains("积分") }
+                    if baseKey == "tokens" { return wLower.contains("token") || wLower.contains("free model") }
+                    if baseKey == "zcode_flash" { return wLower.contains("flash") || wLabel.contains("flash") }
+                    if baseKey == "zcode_53" { return (wLower.contains("5.3") || wLabel.contains("5.3")) && !wLower.contains("flash") && !wLabel.contains("flash") }
+                    let key = w.id.components(separatedBy: ":").first ?? w.id
+                    return key == baseKey
+                }
+            }
+
+            let percents = matchingWindows.compactMap(\.remainingPercent)
+            let avgPercent: Double? = percents.isEmpty ? nil : (percents.reduce(0, +) / Double(percents.count))
+
+            let detail = matchingWindows.compactMap { w -> String? in
+                if let openParen = w.label.firstIndex(of: "("),
+                   let closeParen = w.label.lastIndex(of: ")"),
+                   openParen < closeParen {
+                    let inside = String(w.label[w.label.index(after: openParen)..<closeParen])
+                    return inside.isEmpty ? nil : inside
+                }
+                return nil
+            }.first
+
+            items.append(QuotaMetricItem(
+                id: baseKey,
+                label: displayLabel,
+                remaining: avgPercent,
+                detail: formatCompactDetail(detail)
+            ))
+        }
+
+        return items
+    }
+
+    private var isFreePlanProvider: Bool {
+        let hasFreePlan = accounts.contains { acct in
+            let plan = acct.snapshot.planType?.lowercased() ?? ""
+            return plan.contains("free") || plan == "free"
+        }
+        let allEmptyWithoutError = accounts.allSatisfy { $0.snapshot.windows.isEmpty && $0.snapshot.error == nil }
+        return hasFreePlan || allEmptyWithoutError
+    }
+
+    private var freePlanStatusView: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.caption)
+                    .foregroundStyle(AccessDeckTheme.success)
+                Text(L10n.t("免费套餐", "Free Tier"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AccessDeckTheme.success)
+            }
+            Text(L10n.t("无速率限制 · 即开即用", "No rate limits · Ready"))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+
+    private func errorStatusView(error: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(AccessDeckTheme.warning)
+                Text(L10n.t("连接异常", "Error"))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AccessDeckTheme.warning)
+            }
+            Text(error)
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+
+    private var emptyStatusView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(L10n.t("暂无活跃额度", "No active quota"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(L10n.t("未检测到额度窗口", "No windows found"))
+                .font(.caption2)
+                .foregroundStyle(Color.secondary.opacity(0.7))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
     }
 
     private var fiveHourRemaining: Double? {
@@ -481,34 +720,90 @@ private struct ProviderGridCard: View {
         StatusBarSummary.exactPooledRemaining(in: accounts, window: .weekly, settings: model.settings)
     }
 
+    private func formatCompactNumberString(_ raw: String) -> String {
+        let cleaned = raw.replacingOccurrences(of: ",", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let num = Double(cleaned) else {
+            return raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if num == 0 {
+            return "0"
+        }
+        if abs(num) >= 1_000_000_000 {
+            let val = num / 1_000_000_000.0
+            return val.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(val))B" : String(format: "%.1fB", val)
+        }
+        if abs(num) >= 1_000_000 {
+            let val = num / 1_000_000.0
+            return val.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(val))M" : String(format: "%.1fM", val)
+        }
+        if abs(num) >= 10_000 {
+            let val = num / 1_000.0
+            return val.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(val))K" : String(format: "%.1fK", val)
+        }
+        if num.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(num))"
+        }
+        return String(format: "%.1f", num)
+    }
+
+    private func formatCompactDetail(_ detail: String?) -> String? {
+        guard let detail = detail?.trimmingCharacters(in: .whitespacesAndNewlines), !detail.isEmpty else {
+            return nil
+        }
+        if detail.contains("/") {
+            let parts = detail.components(separatedBy: "/")
+            if parts.count == 2 {
+                let left = formatCompactNumberString(parts[0])
+                let right = formatCompactNumberString(parts[1])
+                return "\(left) / \(right)"
+            }
+        }
+        return formatCompactNumberString(detail)
+    }
+
     @ViewBuilder
-    private func quotaRow(label: String, remaining: Double?) -> some View {
-        let customHex = model.settings.customColorHex(for: provider)
-        let color = AccessDeckTheme.progressColor(for: provider, remaining: remaining, customHex: customHex)
+    private func quotaRow(label: String, remaining: Double?, detail: String? = nil) -> some View {
+        let barColor = AccessDeckTheme.widgetBarColor(for: provider, remaining: remaining)
+        let formattedDetail = formatCompactDetail(detail)
+
         VStack(alignment: .leading, spacing: 5) {
-            HStack(alignment: .firstTextBaseline) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(label)
-                    .font(.caption2)
+                    .font(.caption2.weight(.medium))
                     .foregroundStyle(.secondary)
-                Spacer()
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+
+                if let formattedDetail, !formattedDetail.isEmpty {
+                    Text(formattedDetail)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(Color.secondary.opacity(0.8))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .minimumScaleFactor(0.85)
+                }
+
+                Spacer(minLength: 4)
+
                 Text(AccessDeckTheme.percentText(remaining))
                     .font(.subheadline.monospacedDigit().weight(.bold))
-                    .foregroundStyle(color)
+                    .foregroundStyle(Color.primary)
+                    .lineLimit(1)
+                    .layoutPriority(1)
             }
 
             SegmentedPillBar(
                 percent: remaining ?? 0,
                 totalSegments: 36,
-                barHeight: 9.0,
-                segmentSpacing: 2.2,
-                cornerRadius: 1.0,
-                activeColor: color,
+                barHeight: 14.0,
+                segmentSpacing: 1.8,
+                cornerRadius: 0,
+                activeColor: barColor,
                 inactiveColor: Color.primary.opacity(0.08)
             )
             .opacity(remaining == nil ? 0.7 : 1.0)
         }
     }
-
 }
 
 private struct HealthMetricCard: View {
@@ -563,7 +858,7 @@ private struct ProviderReorderSheet: View {
                             }
                             .buttonStyle(.plain)
 
-                            ProviderGlyph(provider: provider, size: 20)
+                            ProviderGlyph(provider: provider, size: 20, tint: AccessDeckTheme.providerColor(for: provider))
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 6) {
                                     Text(provider.displayName)

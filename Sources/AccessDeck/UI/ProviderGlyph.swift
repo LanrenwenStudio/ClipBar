@@ -14,7 +14,7 @@ struct ProviderGlyph: View {
                     .resizable()
                     .frame(width: size, height: size)
             } else {
-                Image(systemName: "server.rack")
+                Image(systemName: ProviderIcon.systemFallbackName(for: provider))
                     .font(.system(size: max(9, size - 2), weight: .medium))
             }
 #else

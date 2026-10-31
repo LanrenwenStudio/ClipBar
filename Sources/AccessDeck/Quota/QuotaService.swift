@@ -52,7 +52,8 @@ struct QuotaService: Sendable {
             try await fetchKimi(account)
         case .xai:
             try await fetchXai(account)
-        case .unknown:
+        case .workbuddy, .qoder, .trae, .minimax, .copilot, .deepseek, .zcode, .stepfun,
+             .qwen, .doubao, .zhipu, .hunyuan, .openrouter, .ollama, .zen, .unknown:
             QuotaSnapshot(
                 planType: nil,
                 windows: [],
@@ -78,14 +79,20 @@ struct QuotaService: Sendable {
             headers: headers
         )
         var snapshot = try decode(response, using: QuotaParser.parseCodex)
-        if snapshot.resetCreditCount == nil {
+        if snapshot.resetCreditCount == nil
+            || ((snapshot.resetCreditCount ?? 0) > 0 && snapshot.resetCreditExpiresAt == nil) {
             if let credits = try? await client.apiCall(
                 authIndex: account.authIndex,
                 method: "GET",
                 url: "https://chatgpt.com/backend-api/wham/rate-limit-reset-credits",
                 headers: headers
             ), (200..<300).contains(credits.statusCode), let object = JSONValue.object(from: credits.body) {
-                snapshot.resetCreditCount = QuotaParser.codexResetCreditCount(object)
+                if let count = QuotaParser.codexResetCreditCount(object) {
+                    snapshot.resetCreditCount = count
+                }
+                snapshot.resetCreditExpiresAt = snapshot.resetCreditCount == 0
+                    ? nil
+                    : QuotaParser.codexResetCreditExpiresAt(object)
             }
         }
         return snapshot

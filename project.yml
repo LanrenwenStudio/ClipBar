@@ -35,6 +35,8 @@ targets:
         buildPhase: resources
       - path: Sources/AccessDeckWidgets/SegmentedPillBar.swift
         type: file
+      - path: Sources/AccessDeckWidgets/SelectProviderIntent.swift
+        type: file
     settings:
       base:
         PRODUCT_NAME: AccessDeck

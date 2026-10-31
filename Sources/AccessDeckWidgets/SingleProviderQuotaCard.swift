@@ -66,7 +66,7 @@ struct SingleProviderQuotaCard: View {
                     .frame(width: 16, height: 16)
 
                 if showResetCredits, provider.provider == .codex, let count = provider.resetCreditCount, count > 0 {
-                    ResetCreditPill(count: count, isAccent: true, fontSize: 9.5, iconSize: 8.0)
+                    ResetCreditPill(count: count, expiresAt: provider.resetCreditExpiresAt, isAccent: true, fontSize: 9.5, iconSize: 8.0)
                 } else {
                     Text(provider.provider == .antigravity ? "Agy" : provider.displayName)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -152,22 +152,22 @@ struct SingleProviderQuotaCard: View {
 
             Spacer(minLength: 2)
 
-            // 4. Chunky Micro-Rounded Rectangle Progress Bar (加粗厚实进度条)
+            // 4. 平滑精致矩形进度条
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                    Rectangle()
                         .fill(Color.primary.opacity(0.08))
-                        .frame(height: 12.5)
+                        .frame(height: 5.0)
 
-                    RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                    Rectangle()
                         .fill(barColor)
                         .frame(
-                            width: percent <= 0 ? 0 : max(2.5, geo.size.width * CGFloat(percent / 100.0)),
-                            height: 12.5
+                            width: percent <= 0 ? 0 : max(0, min(geo.size.width, geo.size.width * CGFloat(percent / 100.0))),
+                            height: 5.0
                         )
                 }
             }
-            .frame(height: 12.5)
+            .frame(height: 5.0)
 
             Spacer(minLength: 4)
 

@@ -154,7 +154,7 @@ enum StatusBarSummary {
             hasData = true
             remainingUnits += percents.reduce(0, +) / Double(percents.count) / 100
         }
-        if !preferFiveHourForProvider, !hasData { return nil }
+        guard hasData else { return nil }
         return remainingUnits / Double(enabled.count) * 100
     }
 

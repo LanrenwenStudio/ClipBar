@@ -98,28 +98,77 @@ enum AccessDeckTheme {
             // Google Gemini Blue
             return Color(red: 0.259, green: 0.522, blue: 0.957)
         case .antigravity:
-            // Cursor / Antigravity Vivid Blue
-            return Color(red: 0.0, green: 0.439, blue: 1.0)
+            // Antigravity Purple-Blue
+            return Color(red: 0.43, green: 0.32, blue: 0.96)
         case .kimi:
             // Kimi Blue
             return Color(red: 0.145, green: 0.388, blue: 0.922)
         case .xai:
             // Grok / xAI Sky Slate
             return Color(red: 0.22, green: 0.74, blue: 0.97)
+        case .workbuddy:
+            // WorkBuddy Teal
+            return Color(red: 0.09, green: 0.63, blue: 0.52)
+        case .qoder:
+            // Qoder Amber / Orange
+            return Color(red: 0.95, green: 0.55, blue: 0.15)
+        case .trae:
+            // Trae Vivid Cyan
+            return Color(red: 0.12, green: 0.68, blue: 0.94)
+        case .minimax:
+            // MiniMax Coral Red
+            return Color(red: 0.94, green: 0.33, blue: 0.38)
+        case .copilot:
+            // GitHub Copilot Purple
+            return Color(red: 0.42, green: 0.28, blue: 0.85)
+        case .deepseek:
+            // DeepSeek Blue
+            return Color(red: 0.23, green: 0.44, blue: 0.93)
+        case .zcode:
+            // ZCode Slate
+            return Color(red: 0.35, green: 0.45, blue: 0.80)
+        case .stepfun:
+            // StepFun Magenta
+            return Color(red: 0.82, green: 0.32, blue: 0.65)
+        case .qwen:
+            // Qwen Purple
+            return Color(red: 0.38, green: 0.25, blue: 0.92)
+        case .doubao:
+            // Doubao Blue
+            return Color(red: 0.24, green: 0.51, blue: 0.98)
+        case .zhipu:
+            // Zhipu Blue
+            return Color(red: 0.21, green: 0.42, blue: 0.88)
+        case .hunyuan:
+            // Tencent Blue
+            return Color(red: 0.18, green: 0.55, blue: 0.85)
+        case .openrouter:
+            return Color(red: 0.40, green: 0.40, blue: 0.45)
+        case .ollama:
+            return Color(red: 0.30, green: 0.30, blue: 0.35)
+        case .zen:
+            return Color(red: 0.20, green: 0.60, blue: 0.50)
         case .unknown:
             return charcoal
         }
     }
 
+    static func providerColor(for provider: QuotaProvider, customHex: String? = nil) -> Color {
+        if let customHex, let customColor = Color(hex: customHex) {
+            return customColor
+        }
+        return brandColor(for: provider)
+    }
+
     static func widgetBarColor(for provider: QuotaProvider, remaining: Double?) -> Color {
-        guard let remaining else { return charcoal }
+        guard let remaining else { return brandColor(for: provider) }
         if remaining <= QuotaDisplayScale.exhausted || remaining <= 5.0 {
             return danger
         }
         if remaining <= 20.0 {
             return warning
         }
-        return charcoal
+        return brandColor(for: provider)
     }
     static func progressColor(for provider: QuotaProvider, remaining: Double?, customHex: String? = nil) -> Color {
         if let customHex, let customColor = Color(hex: customHex) {

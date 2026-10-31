@@ -66,23 +66,10 @@ struct SingleProviderWidgetView: View {
     private var targetProvider: ProviderWidgetData? {
         let providers = entry.snapshot.providers
         guard !providers.isEmpty else { return nil }
-
-        switch entry.selectedChoice {
-        case .auto:
+        if entry.selectedChoice == .auto {
             return providers.first
-        case .codex:
-            return providers.first(where: { $0.providerRawValue == "codex" })
-        case .claude:
-            return providers.first(where: { $0.providerRawValue == "claude" })
-        case .gemini:
-            return providers.first(where: { $0.providerRawValue == "gemini" })
-        case .antigravity:
-            return providers.first(where: { $0.providerRawValue == "antigravity" })
-        case .grok:
-            return providers.first(where: { $0.providerRawValue == "xai" })
-        case .kimi:
-            return providers.first(where: { $0.providerRawValue == "kimi" })
         }
+        return providers.first(where: { entry.selectedChoice.matches(provider: $0) })
     }
 
     var body: some View {

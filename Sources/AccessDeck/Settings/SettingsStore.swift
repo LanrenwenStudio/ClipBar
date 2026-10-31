@@ -106,18 +106,28 @@ final class SettingsStore {
         migrateLegacyKeysIfNeeded()
         var settings = AppSettings.default
         if let baseURL = defaults.string(forKey: Key.baseURL), !baseURL.isEmpty {
-            settings.baseURL = baseURL
+            if baseURL.contains(":8317") {
+                let migrated = baseURL.replacingOccurrences(of: ":8317", with: ":3430")
+                settings.baseURL = migrated
+                defaults.set(migrated, forKey: Key.baseURL)
+            } else {
+                settings.baseURL = baseURL
+            }
         }
-        if settings.baseURL.isEmpty {
+        if settings.baseURL.isEmpty || settings.baseURL.contains(":8317") {
             settings.baseURL = AppSettings.defaultBaseURL
+            defaults.set(AppSettings.defaultBaseURL, forKey: Key.baseURL)
         }
-        if let key = secretStore.loadManagementKey() {
+        if let key = secretStore.loadManagementKey(), !key.isEmpty {
             settings.managementKey = key
-        } else if let key = defaults.string(forKey: Key.managementKey) {
+        } else if let key = defaults.string(forKey: Key.managementKey), !key.isEmpty {
             settings.managementKey = key
             if secretStore.saveManagementKey(key) {
                 defaults.removeObject(forKey: Key.managementKey)
             }
+        }
+        if settings.managementKey.isEmpty {
+            settings.managementKey = AppSettings.defaultManagementKey
         }
         defaults.removeObject(forKey: "clipbar.connectionMode")
         secretStore.removeLegacyAccessToken()
@@ -185,9 +195,13 @@ final class SettingsStore {
         guard payload.timestamp > localTimestamp else { return }
         defaults.set(payload.timestamp, forKey: settingsTimestampKey)
         isApplyingCloudSettings = true
-        apply(settingsPayload.settings)
+        var cloudSettings = settingsPayload.settings
+        if cloudSettings.baseURL.contains(":8317") {
+            cloudSettings.baseURL = cloudSettings.baseURL.replacingOccurrences(of: ":8317", with: ":3430")
+        }
+        apply(cloudSettings)
         isApplyingCloudSettings = false
-        onCloudChange?(CloudChange(settings: settingsPayload.settings))
+        onCloudChange?(CloudChange(settings: cloudSettings))
     }
 
     private func apply(_ settings: AppSettings) {

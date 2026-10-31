@@ -230,9 +230,54 @@ struct StatusBarSummaryTests {
         let legacy = Data(#"{"providerRawValue":"codex","displayName":"Codex","accountCount":1,"healthyCount":1,"statusText":"正常","windows":[]}"#.utf8)
         let decoded = try JSONDecoder().decode(ProviderWidgetData.self, from: legacy)
         #expect(decoded.resetCreditCount == nil)
+        #expect(decoded.resetCreditExpiresAt == nil)
         let current = ProviderWidgetData(providerRawValue: "codex", displayName: "Codex", remainingPercent: 0, accountCount: 1, healthyCount: 0, statusText: "已耗尽", windows: [], resetCreditCount: 0)
         let restored = try JSONDecoder().decode(ProviderWidgetData.self, from: JSONEncoder().encode(current))
         #expect(restored.resetCreditCount == 0)
+    }
+
+    @Test("Widget reset expiry pools only positive enabled Codex balances")
+    func widgetResetCreditExpiry() {
+        let early = Date(timeIntervalSince1970: 100)
+        let late = Date(timeIntervalSince1970: 200)
+        var first = row(id: "c1", provider: .codex, remaining: [0])
+        var second = row(id: "c2", provider: .codex, remaining: [40])
+        var other = row(id: "other", provider: .claude, remaining: [40])
+        first.snapshot.resetCreditCount = 2
+        first.snapshot.resetCreditExpiresAt = late
+        second.snapshot.resetCreditCount = 1
+        second.snapshot.resetCreditExpiresAt = early
+        other.snapshot.resetCreditCount = 1
+        other.snapshot.resetCreditExpiresAt = early.addingTimeInterval(-1)
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second, other], settings: .default) == early)
+        second.account.disabled = true
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second], settings: .default) == late)
+        second.account.disabled = false
+        var settings = AppSettings.default
+        settings.disabledAccountKeys = [second.account.statusKey]
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second], settings: settings) == late)
+        second.snapshot.resetCreditCount = 0
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second], settings: .default) == late)
+        second.snapshot.resetCreditCount = nil
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second], settings: .default) == late)
+        second.snapshot.resetCreditCount = -1
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second], settings: .default) == late)
+        first.snapshot.resetCreditExpiresAt = nil
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [first, second], settings: .default) == nil)
+        #expect(ProviderWidgetData.pooledResetCreditExpiresAt(in: [], settings: .default) == nil)
+    }
+
+    @Test("Widget reset expiry survives snapshot persistence")
+    func widgetResetCreditExpiryRoundTrip() throws {
+        let expiry = Date(timeIntervalSince1970: 1_800_000_000.5)
+        let provider = ProviderWidgetData(
+            providerRawValue: "codex", displayName: "Codex", remainingPercent: 0,
+            accountCount: 1, healthyCount: 0, statusText: "已耗尽", windows: [],
+            resetCreditCount: 2, resetCreditExpiresAt: expiry
+        )
+        let restored = try JSONDecoder().decode(ProviderWidgetData.self, from: JSONEncoder().encode(provider))
+        #expect(restored.resetCreditCount == 2)
+        #expect(restored.resetCreditExpiresAt == expiry)
     }
 
     private func row(

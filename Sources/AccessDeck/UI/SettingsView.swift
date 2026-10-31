@@ -162,19 +162,83 @@ struct SettingsView: View {
 
             SettingsSection(title: L10n.t("服务参数配置", "Service Configuration"), icon: "server.rack") {
                 VStack(alignment: .leading, spacing: 10) {
-                    SettingsField(title: L10n.t("CLIProxyAPI 地址", "CLIProxyAPI URL")) {
-                        TextField("http://127.0.0.1:8317", text: $draft.baseURL)
-                            .modifier(AccessDeckFieldStyle(isFocused: focusedField == .url))
-                            .focused($focusedField, equals: .url)
+                    SettingsField(title: L10n.t("Magpie 管理地址", "Magpie management URL")) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            TextField("http://127.0.0.1:3425", text: $draft.baseURL)
+                                .modifier(AccessDeckFieldStyle(isFocused: focusedField == .url))
+                                .focused($focusedField, equals: .url)
+
+                            HStack(spacing: 6) {
+                                Button {
+                                    draft.baseURL = "http://127.0.0.1:3425"
+                                    draft.managementKey = AppSettings.builtinDesktopGatewayKey
+                                } label: {
+                                    Text(L10n.t("本机 · 3425", "Local · 3425"))
+                                        .font(.system(size: 10, weight: .medium))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(Color.primary.opacity(0.04))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    draft.baseURL = "http://192.168.1.3:3425"
+                                    draft.managementKey = AppSettings.builtinRouterGatewayKey
+                                } label: {
+                                    Text(L10n.t("软路由 · 3425", "Router · 3425"))
+                                        .font(.system(size: 10, weight: .medium))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(Color.primary.opacity(0.04))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    draft.baseURL = "http://192.168.1.3:3430"
+                                    draft.managementKey = AppSettings.builtinRouterWebKey
+                                } label: {
+                                    Text(L10n.t("软路由 · 3430", "Router · 3430"))
+                                        .font(.system(size: 10, weight: .medium))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(Color.primary.opacity(0.04))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+
+                                Button {
+                                    draft.baseURL = AppSettings.defaultBaseURL
+                                    draft.managementKey = AppSettings.defaultManagementKey
+                                } label: {
+                                    Text(L10n.t("自动故障转移", "Auto Failover"))
+                                        .font(.system(size: 10, weight: .medium))
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 4)
+                                                .fill(Color.primary.opacity(0.04))
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
                     }
 
                     SettingsField(title: L10n.t("管理密钥", "Management Key")) {
                         HStack(spacing: 6) {
                             Group {
                                 if revealsKey {
-                                    TextField(L10n.t("输入 CPA 管理密钥", "Enter CPA key"), text: $draft.managementKey)
+                                    TextField(L10n.t("输入 Magpie 网关 Key 或网页密钥", "Enter Gateway Key or Web Key"), text: $draft.managementKey)
                                 } else {
-                                    SecureField(L10n.t("输入 CPA 管理密钥", "Enter CPA key"), text: $draft.managementKey)
+                                    SecureField(L10n.t("输入 Magpie 网关 Key 或网页密钥", "Enter Gateway Key or Web Key"), text: $draft.managementKey)
                                 }
                             }
                             .modifier(AccessDeckFieldStyle(isFocused: focusedField == .key))
@@ -370,7 +434,7 @@ struct SettingsView: View {
             if model.orderedPreferenceProviders.isEmpty {
                 UnavailableStateView(
                     title: L10n.t("暂无渠道数据", "No Providers Yet"),
-                    detail: L10n.t("请先在「服务连接」中正确填写 CPA 地址与密钥，拉取订阅数据。", "Configure CPA in Service tab first to load account quotas."),
+                    detail: L10n.t("请先在「服务连接」中正确填写 Magpie 地址与网页密钥，拉取订阅数据。", "Configure Magpie in Service tab first to load account quotas."),
                     systemImage: "tray"
                 )
             } else {
@@ -506,7 +570,7 @@ struct SettingsView: View {
         case .failed:
             L10n.t("连接失败", "Connection failed")
         case .idle, .online:
-            L10n.t("CPA 运行在线", "CPA Online")
+            L10n.t("Magpie 运行在线", "Magpie Online")
         }
     }
 
@@ -526,7 +590,7 @@ struct SettingsView: View {
     private var connectionSubtitle: String {
         switch model.connection {
         case .unconfigured:
-            L10n.t("请输入本地 CPA 管理接口与密钥", "Enter CPA management URL and key")
+            L10n.t("请输入 Magpie 管理地址与网页密钥", "Enter Magpie management URL and web key")
         case .refreshing:
             L10n.t("正在拉取最新订阅额度…", "Fetching subscription quotas…")
         case .failed(let msg):
@@ -585,6 +649,9 @@ struct SettingsView: View {
 
     private func prepareDraft() {
         draft = model.settings
+        if draft.baseURL.contains(":8317") || draft.baseURL.isEmpty {
+            draft.baseURL = AppSettings.defaultBaseURL
+        }
         draft.refreshSeconds = draft.clampedRefreshSeconds
         focusedField = nil
     }

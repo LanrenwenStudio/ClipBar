@@ -127,7 +127,8 @@ final class WidgetDataStore: @unchecked Sendable {
                 healthyCount: healthyCount,
                 statusText: statusText,
                 windows: Array(windows.prefix(2)),
-                resetCreditCount: provider == .codex ? ProviderWidgetData.pooledResetCreditCount(in: pAccounts, settings: settings) : nil
+                resetCreditCount: provider == .codex ? ProviderWidgetData.pooledResetCreditCount(in: pAccounts, settings: settings) : nil,
+                resetCreditExpiresAt: provider == .codex ? ProviderWidgetData.pooledResetCreditExpiresAt(in: pAccounts, settings: settings) : nil
             ))
         }
 
